@@ -1,0 +1,51 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+header, footer {
+  background: #222;
+  color: #fff;
+  text-align: center;
+  padding: 1rem;
+}
+main {
+  flex: 1;
+  padding: 1rem;
+  max-width: 900px;
+  margin: auto;
+}
+.uploader {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+.stem-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1rem;
+}
+.stem {
+  background: #fff;
+  padding: 1rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.stem h3 {
+  margin-top: 0;
+}
+button {
+  margin-top: 0.5rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  background: #0070f3;
+  color: #fff;
+  cursor: pointer;
+}
+button:hover {
+  background: #005bb5;
+}

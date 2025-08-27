@@ -1,0 +1,8 @@
+{
+  "name": "stemsplitter",
+  "version": "1.0.0",
+  "description": "Offline stem splitter web app",
+  "scripts": {
+    "test": "echo 'no tests'"
+  }
+}
