@@ -1,4 +1,0 @@
-uploads/
-static/stems/*
-!static/stems/.gitkeep
-__pycache__/
