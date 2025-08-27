@@ -1,0 +1,8 @@
+{
+  "name": "browser-stem-splitter",
+  "version": "1.0.0",
+  "description": "Client-side stem splitter web app for deployment on Vercel",
+  "scripts": {
+    "test": "echo 'no tests'"
+  }
+}

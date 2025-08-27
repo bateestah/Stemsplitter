@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Stem Splitter (Browser)</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 2em; }
+        .stem { margin-bottom: 1.5em; }
+        audio { display: block; margin-top: 0.5em; }
+    </style>
+    <!-- Spleeter in the browser -->
+    <script src="https://cdn.jsdelivr.net/npm/@spleeter/web@latest"></script>
+    <!-- ffmpeg.wasm for exporting MP3 -->
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.6/dist/ffmpeg.min.js"></script>
+</head>
+<body>
+    <h1>Stem Splitter</h1>
+    <p>Select an MP3 file to split it locally into stems. No server-side processing is used.</p>
+    <input type="file" id="file" accept="audio/mpeg" />
+    <div id="stems"></div>
+    <script src="script.js"></script>
+</body>
+</html>
