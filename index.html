@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stem Splitter</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <h1>Stem Splitter</h1>
+    <p>Upload an MP3 and split it into stems – all in your browser.</p>
+  </header>
+  <main>
+    <div class="uploader">
+      <input type="file" id="fileInput" accept="audio/mp3,audio/mpeg" />
+    </div>
+    <div id="stems" class="stem-container"></div>
+  </main>
+  <footer>
+    <p>Powered by Web Audio API – no server processing.</p>
+  </footer>
+  <script src="app.js"></script>
+</body>
+</html>
