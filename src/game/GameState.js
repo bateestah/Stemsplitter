@@ -12,6 +12,7 @@ export class GameState {
     this.selectedItemId = defaultSelection.itemId;
     this.selectedRotation = 0;
     this.hoveredTile = null;
+    this.interactionMode = 'build';
 
     this.listeners = new Set();
   }
@@ -55,6 +56,31 @@ export class GameState {
 
     this.selectedRotation = (this.selectedRotation + step + 4) % 4;
     this.notifyChange();
+  }
+
+  getInteractionMode() {
+    return this.interactionMode;
+  }
+
+  isWalkMode() {
+    return this.interactionMode === 'walk';
+  }
+
+  setInteractionMode(mode) {
+    if (mode !== 'build' && mode !== 'walk') {
+      return;
+    }
+
+    if (this.interactionMode === mode) {
+      return;
+    }
+
+    this.interactionMode = mode;
+    this.notifyChange();
+  }
+
+  toggleInteractionMode() {
+    this.setInteractionMode(this.interactionMode === 'walk' ? 'build' : 'walk');
   }
 
   rotateFurnitureAt(x, y, step = 1) {

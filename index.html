@@ -21,6 +21,15 @@
         </div>
         <div class="header-actions">
           <button
+            id="modeToggle"
+            class="action-button mode-toggle"
+            type="button"
+            title="Toggle walk mode to control the avatar with left clicks"
+            aria-pressed="false"
+          >
+            Walk Mode: Off
+          </button>
+          <button
             id="rotateButton"
             class="action-button"
             type="button"
@@ -39,13 +48,14 @@
         <aside class="palette-panel">
           <h2>Palette</h2>
           <p class="panel-description">
-            Pick a floor style or furnish the space. Left click to place, right click to remove furniture.
+            Pick a floor style or furnish the space. Left click to place, right click to remove furniture. Switch to walk mode to send the avatar exploring.
           </p>
           <div id="paletteRoot" class="palette-root"></div>
           <div class="legend">
             <h3>Controls</h3>
             <ul>
-              <li><span>Left click</span> Place the selected tile or furniture</li>
+              <li><span>Left click</span> Place the selected tile or furniture (build mode)</li>
+              <li><span>Walk Mode button</span> Toggle avatar controls, then left click to send them walking</li>
               <li><span>Right click</span> Remove furniture from the hovered tile</li>
               <li><span>R / Shift + R</span> Rotate hovered furniture or cycle the selection (Shift reverses)</li>
               <li><span>Shift + click</span> Sample the hovered floor style</li>

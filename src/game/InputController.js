@@ -1,8 +1,9 @@
 export class InputController {
-  constructor(canvas, state, renderer) {
+  constructor(canvas, state, renderer, avatar) {
     this.canvas = canvas;
     this.state = state;
     this.renderer = renderer;
+    this.avatar = avatar;
 
     this.handlePointerMove = this.handlePointerMove.bind(this);
     this.handlePointerLeave = this.handlePointerLeave.bind(this);
@@ -44,9 +45,13 @@ export class InputController {
       return;
     }
 
+    const isWalkMode = typeof this.state.isWalkMode === 'function' && this.state.isWalkMode();
+
     if (event.button === 2) {
       event.preventDefault();
-      this.state.removeFurnitureAt(tile.x, tile.y);
+      if (!isWalkMode) {
+        this.state.removeFurnitureAt(tile.x, tile.y);
+      }
       return;
     }
 
@@ -55,6 +60,13 @@ export class InputController {
     }
 
     event.preventDefault();
+
+    if (isWalkMode) {
+      if (this.avatar) {
+        this.avatar.setTarget(tile.x, tile.y);
+      }
+      return;
+    }
 
     if (event.shiftKey) {
       this.state.sampleFloor(tile.x, tile.y);
@@ -68,6 +80,10 @@ export class InputController {
     event.preventDefault();
     const tile = this.getTileFromEvent(event);
     if (!tile) {
+      return;
+    }
+
+    if (typeof this.state.isWalkMode === 'function' && this.state.isWalkMode()) {
       return;
     }
 
