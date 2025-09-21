@@ -16,8 +16,14 @@ export class IsoRenderer {
     this.displayWidth = canvas.clientWidth || canvas.width;
     this.displayHeight = canvas.clientHeight || canvas.height;
 
+    this.avatar = null;
+
     window.addEventListener('resize', () => this.draw());
     this.draw();
+  }
+
+  setAvatar(avatar) {
+    this.avatar = avatar;
   }
 
   resizeCanvas() {
@@ -61,6 +67,7 @@ export class IsoRenderer {
     this.drawFloor(ctx);
     this.drawHoverFill(ctx);
     this.drawFurniture(ctx);
+    this.drawAvatar(ctx);
     this.drawHoverOutline(ctx);
   }
 
@@ -294,6 +301,170 @@ export class IsoRenderer {
     this.drawOrientationCue(ctx, top, rotation);
   }
 
+  drawAvatar(ctx) {
+    if (!this.avatar) {
+      return;
+    }
+
+    const visual = this.avatar.getVisualState();
+    if (!visual || !visual.position) {
+      return;
+    }
+
+    const { position, direction, isMoving, walkPhase } = visual;
+    const { x: topX, y: topY } = this.gridToScreen(position.x, position.y);
+    const centerX = topX;
+    const centerY = topY + this.halfTileHeight;
+
+    const bounce = isMoving ? Math.pow(Math.sin(walkPhase * Math.PI), 2) * this.tileHeight * 0.22 : 0;
+    const basis = this.getAvatarBasis(direction);
+    const hipPoint = this.applyIsoOffset(centerX, centerY, this.scaleIsoVector(basis.forward, 0.05));
+    const hipX = hipPoint.x;
+    const hipY = hipPoint.y - bounce + this.tileHeight * 0.02;
+
+    const cycle = walkPhase * Math.PI * 2;
+    const stride = isMoving ? Math.sin(cycle) : 0;
+    const sway = isMoving ? Math.cos(cycle) : 0;
+
+    const leftFootPoint = this.applyIsoOffset(
+      centerX,
+      centerY,
+      this.addIsoVectors(
+        this.scaleIsoVector(basis.forward, 0.38 + stride * 0.12),
+        this.scaleIsoVector(basis.side, 0.22 + sway * 0.05)
+      )
+    );
+
+    const rightFootPoint = this.applyIsoOffset(
+      centerX,
+      centerY,
+      this.addIsoVectors(
+        this.scaleIsoVector(basis.forward, 0.38 - stride * 0.12),
+        this.scaleIsoVector(basis.side, -0.22 + sway * 0.05)
+      )
+    );
+
+    const leftLift = isMoving ? Math.max(0, Math.sin(cycle)) * this.tileHeight * 0.12 : 0;
+    const rightLift = isMoving ? Math.max(0, Math.sin(cycle + Math.PI)) * this.tileHeight * 0.12 : 0;
+    const leftFootY = leftFootPoint.y - leftLift;
+    const rightFootY = rightFootPoint.y - rightLift;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(6, 10, 26, 0.28)';
+    ctx.beginPath();
+    ctx.ellipse(centerX, centerY + this.halfTileHeight * 0.35, this.halfTileWidth * 0.36, this.halfTileHeight * 0.42, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    const legColor = '#233158';
+    ctx.strokeStyle = legColor;
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 4.2;
+    ctx.beginPath();
+    ctx.moveTo(hipX, hipY);
+    ctx.lineTo(rightFootPoint.x, rightFootY);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(hipX, hipY);
+    ctx.lineTo(leftFootPoint.x, leftFootY);
+    ctx.stroke();
+
+    ctx.fillStyle = '#d8dadf';
+    ctx.beginPath();
+    ctx.ellipse(rightFootPoint.x, rightFootY, 6, 3.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(leftFootPoint.x, leftFootY, 6, 3.4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    const torsoPoint = this.applyIsoOffset(centerX, centerY, this.scaleIsoVector(basis.forward, -0.16));
+    const torsoX = torsoPoint.x;
+    const torsoY = torsoPoint.y - bounce - this.tileHeight * 0.18;
+
+    ctx.save();
+    ctx.translate(torsoX, torsoY);
+    ctx.fillStyle = '#5165c1';
+    ctx.beginPath();
+    ctx.ellipse(0, 8, 11, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#3b4aa0';
+    ctx.beginPath();
+    ctx.ellipse(0, 4, 8.5, 12, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    const shoulderPoint = this.applyIsoOffset(centerX, centerY, this.scaleIsoVector(basis.forward, -0.2));
+    const shoulderX = shoulderPoint.x;
+    const shoulderY = shoulderPoint.y - bounce - this.tileHeight * 0.26;
+
+    const leftHandPoint = this.applyIsoOffset(
+      centerX,
+      centerY,
+      this.addIsoVectors(
+        this.scaleIsoVector(basis.forward, 0.18 - stride * 0.1),
+        this.scaleIsoVector(basis.side, 0.35 + sway * 0.08)
+      )
+    );
+    const rightHandPoint = this.applyIsoOffset(
+      centerX,
+      centerY,
+      this.addIsoVectors(
+        this.scaleIsoVector(basis.forward, 0.18 + stride * 0.1),
+        this.scaleIsoVector(basis.side, -0.35 + sway * 0.08)
+      )
+    );
+
+    const leftHandY = leftHandPoint.y - bounce - (isMoving ? Math.max(0, Math.sin(cycle + Math.PI)) * this.tileHeight * 0.08 : 0);
+    const rightHandY = rightHandPoint.y - bounce - (isMoving ? Math.max(0, Math.sin(cycle)) * this.tileHeight * 0.08 : 0);
+
+    ctx.strokeStyle = '#f4c097';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(shoulderX, shoulderY);
+    ctx.lineTo(rightHandPoint.x, rightHandY);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(shoulderX, shoulderY);
+    ctx.lineTo(leftHandPoint.x, leftHandY);
+    ctx.stroke();
+
+    const headPoint = this.applyIsoOffset(centerX, centerY, this.scaleIsoVector(basis.forward, -0.28));
+    const headX = headPoint.x;
+    const headY = headPoint.y - bounce - this.tileHeight * 0.43;
+
+    ctx.fillStyle = '#2c3565';
+    ctx.beginPath();
+    ctx.arc(headX, headY - 5, 8.6, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#f4d9be';
+    ctx.beginPath();
+    ctx.arc(headX, headY, 8, 0, Math.PI * 2);
+    ctx.fill();
+
+    const faceOffset = this.isoToScreenDelta(this.scaleIsoVector(basis.forward, 0.05));
+    ctx.fillStyle = '#2e1c16';
+    ctx.beginPath();
+    ctx.arc(headX + faceOffset.x * 0.6 - 2, headY - 1.5, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(headX + faceOffset.x * 0.6 + 2, headY - 1.5, 1.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#d9956c';
+    ctx.beginPath();
+    ctx.arc(headX + faceOffset.x * 0.6, headY + 1.5, 1.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    const fringeOffset = this.isoToScreenDelta(this.scaleIsoVector(basis.forward, -0.02));
+    ctx.fillStyle = '#24305a';
+    ctx.beginPath();
+    ctx.arc(headX + fringeOffset.x, headY - 6, 7.5, 0, Math.PI);
+    ctx.fill();
+  }
+
   drawFurnitureShadow(ctx, center, height) {
     const intensity = Math.min(0.35, 0.2 + height / 300);
     ctx.save();
@@ -411,6 +582,61 @@ export class IsoRenderer {
     const dx = Math.abs(px - centerX);
     const dy = Math.abs(py - centerY);
     return dx / this.halfTileWidth + dy / this.halfTileHeight <= 1;
+  }
+
+  applyIsoOffset(baseX, baseY, vector) {
+    const delta = this.isoToScreenDelta(vector);
+    return {
+      x: baseX + delta.x,
+      y: baseY + delta.y
+    };
+  }
+
+  isoToScreenDelta(vector) {
+    return {
+      x: (vector.dx - vector.dy) * this.halfTileWidth,
+      y: (vector.dx + vector.dy) * this.halfTileHeight
+    };
+  }
+
+  scaleIsoVector(vector, scalar) {
+    return {
+      dx: vector.dx * scalar,
+      dy: vector.dy * scalar
+    };
+  }
+
+  addIsoVectors(...vectors) {
+    return vectors.reduce(
+      (acc, vec) => ({
+        dx: acc.dx + vec.dx,
+        dy: acc.dy + vec.dy
+      }),
+      { dx: 0, dy: 0 }
+    );
+  }
+
+  getAvatarBasis(direction) {
+    const bases = {
+      north: {
+        forward: { dx: 0, dy: -1 },
+        side: { dx: 1, dy: 0 }
+      },
+      south: {
+        forward: { dx: 0, dy: 1 },
+        side: { dx: -1, dy: 0 }
+      },
+      east: {
+        forward: { dx: 1, dy: 0 },
+        side: { dx: 0, dy: 1 }
+      },
+      west: {
+        forward: { dx: -1, dy: 0 },
+        side: { dx: 0, dy: -1 }
+      }
+    };
+
+    return bases[direction] ?? bases.south;
   }
 
   shadeColor(hex, percent) {

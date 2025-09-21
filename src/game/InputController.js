@@ -1,8 +1,9 @@
 export class InputController {
-  constructor(canvas, state, renderer) {
+  constructor(canvas, state, renderer, avatar = null) {
     this.canvas = canvas;
     this.state = state;
     this.renderer = renderer;
+    this.avatar = avatar;
 
     this.handlePointerMove = this.handlePointerMove.bind(this);
     this.handlePointerLeave = this.handlePointerLeave.bind(this);
@@ -58,10 +59,16 @@ export class InputController {
 
     if (event.shiftKey) {
       this.state.sampleFloor(tile.x, tile.y);
+      if (this.avatar) {
+        this.avatar.moveTo(tile.x, tile.y);
+      }
       return;
     }
 
     this.state.placeSelection(tile.x, tile.y);
+    if (this.avatar) {
+      this.avatar.moveTo(tile.x, tile.y);
+    }
   }
 
   handleContextMenu(event) {
