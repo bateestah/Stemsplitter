@@ -33,22 +33,17 @@ export class IsoRenderer {
     this.avatar = avatar;
     this.ctx = canvas.getContext('2d');
 
-    this.tileWidth = 64;
-    this.tileHeight = 32;
-    this.halfTileWidth = this.tileWidth / 2;
-    this.halfTileHeight = this.tileHeight / 2;
-    this.wallHeight = this.tileHeight * 3;
+    this.baseTileWidth = 64;
+    this.baseTileHeight = 32;
+    this.minZoom = 0.6;
+    this.maxZoom = 1.6;
+    this.zoomStep = 0.2;
+    this.zoom = 1;
+    this.updateTileMetrics();
 
     this.pixelRatio = window.devicePixelRatio || 1;
     this.displayWidth = canvas.clientWidth || canvas.width;
     this.displayHeight = canvas.clientHeight || canvas.height;
-
-    this.directionVectors = [
-      { x: this.halfTileWidth, y: -this.halfTileHeight },
-      { x: this.halfTileWidth, y: this.halfTileHeight },
-      { x: -this.halfTileWidth, y: this.halfTileHeight },
-      { x: -this.halfTileWidth, y: -this.halfTileHeight }
-    ];
 
     this.forceRedraw = true;
     this.lastTimestamp = performance.now();
@@ -63,6 +58,55 @@ export class IsoRenderer {
     this.renderLoop = this.renderLoop.bind(this);
     this.drawFrame();
     this.animationFrameId = requestAnimationFrame(this.renderLoop);
+  }
+
+  updateTileMetrics() {
+    this.tileWidth = this.baseTileWidth * this.zoom;
+    this.tileHeight = this.baseTileHeight * this.zoom;
+    this.halfTileWidth = this.tileWidth / 2;
+    this.halfTileHeight = this.tileHeight / 2;
+    this.wallHeight = this.tileHeight * 3;
+
+    this.directionVectors = [
+      { x: this.halfTileWidth, y: -this.halfTileHeight },
+      { x: this.halfTileWidth, y: this.halfTileHeight },
+      { x: -this.halfTileWidth, y: this.halfTileHeight },
+      { x: -this.halfTileWidth, y: -this.halfTileHeight }
+    ];
+  }
+
+  setZoom(zoom) {
+    const value = Number.isFinite(zoom) ? zoom : this.zoom;
+    const clamped = Math.min(this.maxZoom, Math.max(this.minZoom, value));
+    if (Math.abs(clamped - this.zoom) < 0.001) {
+      return false;
+    }
+
+    this.zoom = clamped;
+    this.updateTileMetrics();
+    this.forceRedraw = true;
+    this.emitZoomChange();
+    return true;
+  }
+
+  zoomIn(step = this.zoomStep) {
+    return this.setZoom(this.zoom + step);
+  }
+
+  zoomOut(step = this.zoomStep) {
+    return this.setZoom(this.zoom - step);
+  }
+
+  canZoomIn() {
+    return this.zoom < this.maxZoom - 0.001;
+  }
+
+  canZoomOut() {
+    return this.zoom > this.minZoom + 0.001;
+  }
+
+  getZoom() {
+    return this.zoom;
   }
 
   resizeCanvas() {
@@ -452,10 +496,26 @@ export class IsoRenderer {
 
     ctx.save();
 
+    const zoomScale = this.zoom;
+
     ctx.fillStyle = 'rgba(10, 15, 35, 0.42)';
     ctx.beginPath();
-    ctx.ellipse(baseX, baseY + 2.5, this.halfTileWidth * 0.36, this.halfTileHeight * 0.55, 0, 0, TWO_PI);
+    ctx.ellipse(
+      baseX,
+      baseY + 2.5 * zoomScale,
+      this.halfTileWidth * 0.36,
+      this.halfTileHeight * 0.55,
+      0,
+      0,
+      TWO_PI
+    );
     ctx.fill();
+
+    if (Math.abs(zoomScale - 1) > 0.0001) {
+      ctx.translate(baseX, baseY);
+      ctx.scale(zoomScale, zoomScale);
+      ctx.translate(-baseX, -baseY);
+    }
 
     const cycle = walkPhase * TWO_PI;
     const swing = Math.sin(cycle) * stride;
@@ -802,6 +862,17 @@ export class IsoRenderer {
     const dx = Math.abs(px - centerX);
     const dy = Math.abs(py - centerY);
     return dx / this.halfTileWidth + dy / this.halfTileHeight <= 1;
+  }
+
+  emitZoomChange() {
+    if (!this.canvas || typeof this.canvas.dispatchEvent !== 'function') {
+      return;
+    }
+
+    const event = new CustomEvent('iso-renderer-zoom-change', {
+      detail: { zoom: this.zoom }
+    });
+    this.canvas.dispatchEvent(event);
   }
 
   destroy() {
