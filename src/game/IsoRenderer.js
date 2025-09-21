@@ -233,10 +233,20 @@ export class IsoRenderer {
   }
 
   drawFurnitureBlock(ctx, sx, sy, definition, rotation) {
-    const base = this.getTileVertices(sx, sy);
-    const top = this.getTileVertices(sx, sy - definition.height);
+    const centerX = sx;
+    const centerY = sy + this.halfTileHeight;
 
-    this.drawFurnitureShadow(ctx, base, definition.height);
+    const buildLayer = layerCenterY => ({
+      top: { x: centerX, y: layerCenterY - this.halfTileHeight },
+      right: { x: centerX + this.halfTileWidth, y: layerCenterY },
+      bottom: { x: centerX, y: layerCenterY + this.halfTileHeight },
+      left: { x: centerX - this.halfTileWidth, y: layerCenterY }
+    });
+
+    const base = buildLayer(centerY);
+    const top = buildLayer(centerY - definition.height);
+
+    this.drawFurnitureShadow(ctx, { x: centerX, y: centerY }, definition.height);
 
     const leftColor = this.shadeColor(definition.color, -0.35);
     const rightColor = this.shadeColor(definition.color, -0.18);
@@ -284,12 +294,12 @@ export class IsoRenderer {
     this.drawOrientationCue(ctx, top, rotation);
   }
 
-  drawFurnitureShadow(ctx, base, height) {
+  drawFurnitureShadow(ctx, center, height) {
     const intensity = Math.min(0.35, 0.2 + height / 300);
     ctx.save();
     ctx.fillStyle = `rgba(6, 10, 26, ${intensity.toFixed(2)})`;
     ctx.beginPath();
-    ctx.ellipse(base.bottom.x, base.bottom.y + 6, this.halfTileWidth * 0.85, this.halfTileHeight * 0.65, 0, 0, Math.PI * 2);
+    ctx.ellipse(center.x, center.y, this.halfTileWidth * 0.6, this.halfTileHeight * 0.45, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
