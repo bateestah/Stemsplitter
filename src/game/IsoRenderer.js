@@ -33,22 +33,18 @@ export class IsoRenderer {
     this.avatar = avatar;
     this.ctx = canvas.getContext('2d');
 
-    this.tileWidth = 64;
-    this.tileHeight = 32;
-    this.halfTileWidth = this.tileWidth / 2;
-    this.halfTileHeight = this.tileHeight / 2;
-    this.wallHeight = this.tileHeight * 3;
+    this.baseTileWidth = 64;
+    this.baseTileHeight = 32;
+    this.baseWallHeight = this.baseTileHeight * 3;
+
+    this.minZoom = 0.6;
+    this.maxZoom = 1.6;
+    this.zoomStep = 0.2;
+    this.zoomLevel = 1;
 
     this.pixelRatio = window.devicePixelRatio || 1;
     this.displayWidth = canvas.clientWidth || canvas.width;
     this.displayHeight = canvas.clientHeight || canvas.height;
-
-    this.directionVectors = [
-      { x: this.halfTileWidth, y: -this.halfTileHeight },
-      { x: this.halfTileWidth, y: this.halfTileHeight },
-      { x: -this.halfTileWidth, y: this.halfTileHeight },
-      { x: -this.halfTileWidth, y: -this.halfTileHeight }
-    ];
 
     this.forceRedraw = true;
     this.lastTimestamp = performance.now();
@@ -61,8 +57,26 @@ export class IsoRenderer {
     window.addEventListener('resize', this.handleResize);
 
     this.renderLoop = this.renderLoop.bind(this);
+    this.updateScale();
     this.drawFrame();
     this.animationFrameId = requestAnimationFrame(this.renderLoop);
+  }
+
+  updateScale() {
+    this.tileWidth = this.baseTileWidth * this.zoomLevel;
+    this.tileHeight = this.baseTileHeight * this.zoomLevel;
+    this.halfTileWidth = this.tileWidth / 2;
+    this.halfTileHeight = this.tileHeight / 2;
+    this.wallHeight = this.baseWallHeight * this.zoomLevel;
+
+    this.directionVectors = [
+      { x: this.halfTileWidth, y: -this.halfTileHeight },
+      { x: this.halfTileWidth, y: this.halfTileHeight },
+      { x: -this.halfTileWidth, y: this.halfTileHeight },
+      { x: -this.halfTileWidth, y: -this.halfTileHeight }
+    ];
+
+    this.forceRedraw = true;
   }
 
   resizeCanvas() {
@@ -802,6 +816,55 @@ export class IsoRenderer {
     const dx = Math.abs(px - centerX);
     const dy = Math.abs(py - centerY);
     return dx / this.halfTileWidth + dy / this.halfTileHeight <= 1;
+  }
+
+  getZoomLevel() {
+    return this.zoomLevel;
+  }
+
+  getZoomBounds() {
+    return { min: this.minZoom, max: this.maxZoom };
+  }
+
+  canZoomIn() {
+    return this.zoomLevel < this.maxZoom - 1e-3;
+  }
+
+  canZoomOut() {
+    return this.zoomLevel > this.minZoom + 1e-3;
+  }
+
+  setZoom(zoom) {
+    if (!Number.isFinite(zoom)) {
+      return false;
+    }
+
+    const clamped = Math.min(this.maxZoom, Math.max(this.minZoom, zoom));
+    if (Math.abs(clamped - this.zoomLevel) < 1e-4) {
+      return false;
+    }
+
+    this.zoomLevel = clamped;
+    this.updateScale();
+    this.resizeCanvas();
+    this.draw();
+    return true;
+  }
+
+  zoomBy(delta) {
+    if (!Number.isFinite(delta) || delta === 0) {
+      return false;
+    }
+
+    return this.setZoom(this.zoomLevel + delta);
+  }
+
+  zoomIn() {
+    return this.zoomBy(this.zoomStep);
+  }
+
+  zoomOut() {
+    return this.zoomBy(-this.zoomStep);
   }
 
   destroy() {
