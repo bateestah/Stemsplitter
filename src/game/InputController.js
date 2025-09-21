@@ -62,6 +62,7 @@ export class InputController {
     }
 
     this.state.placeSelection(tile.x, tile.y);
+    this.state.moveAvatarTo(tile.x, tile.y);
   }
 
   handleContextMenu(event) {
