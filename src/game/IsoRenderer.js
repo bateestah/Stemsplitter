@@ -445,7 +445,7 @@ export class IsoRenderer {
     const { position, facing, walkPhase, stride, bob, sway, lean } = avatarState;
     const forwardBase = this.directionVectors[facing % this.directionVectors.length] ?? this.directionVectors[1];
     const forward = normalizeVec(forwardBase);
-    const right = normalizeVec({ x: forward.y, y: -forward.x });
+    const right = normalizeVec({ x: -forward.y, y: forward.x });
 
     const baseX = screenX;
     const baseY = screenY + this.halfTileHeight;
