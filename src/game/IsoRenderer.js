@@ -10,6 +10,7 @@ export class IsoRenderer {
     this.tileHeight = 32;
     this.halfTileWidth = this.tileWidth / 2;
     this.halfTileHeight = this.tileHeight / 2;
+    this.wallHeight = this.tileHeight * 3;
 
     this.pixelRatio = window.devicePixelRatio || 1;
     this.displayWidth = canvas.clientWidth || canvas.width;
@@ -56,10 +57,86 @@ export class IsoRenderer {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.scale(this.pixelRatio, this.pixelRatio);
 
+    this.drawWalls(ctx);
     this.drawFloor(ctx);
     this.drawHoverFill(ctx);
     this.drawFurniture(ctx);
     this.drawHoverOutline(ctx);
+  }
+
+  drawWalls(ctx) {
+    if (this.state.width <= 0 || this.state.height <= 0) {
+      return;
+    }
+
+    const baseColor = '#d8dbe3';
+    const strokeColor = this.shadeColor(baseColor, -0.4);
+    const leftFill = this.shadeColor(baseColor, -0.25);
+    const rightFill = this.shadeColor(baseColor, -0.1);
+
+    const topCorner = this.gridToScreen(0, 0);
+
+    const backLeftBase = [
+      { x: topCorner.x, y: topCorner.y }
+    ];
+    for (let y = 0; y < this.state.height; y += 1) {
+      const { x: sx, y: sy } = this.gridToScreen(0, y);
+      backLeftBase.push({
+        x: sx - this.halfTileWidth,
+        y: sy + this.halfTileHeight
+      });
+    }
+
+    const backRightBase = [
+      { x: topCorner.x, y: topCorner.y }
+    ];
+    for (let x = 0; x < this.state.width; x += 1) {
+      const { x: sx, y: sy } = this.gridToScreen(x, 0);
+      backRightBase.push({
+        x: sx + this.halfTileWidth,
+        y: sy + this.halfTileHeight
+      });
+    }
+
+    this.drawWallFace(ctx, backLeftBase, leftFill, strokeColor);
+    this.drawWallFace(ctx, backRightBase, rightFill, strokeColor);
+  }
+
+  drawWallFace(ctx, basePoints, fillColor, strokeColor) {
+    if (!basePoints || basePoints.length < 2) {
+      return;
+    }
+
+    const topPoints = basePoints.map(point => ({
+      x: point.x,
+      y: point.y - this.wallHeight
+    }));
+
+    ctx.beginPath();
+    ctx.moveTo(basePoints[0].x, basePoints[0].y);
+    for (let i = 1; i < basePoints.length; i += 1) {
+      ctx.lineTo(basePoints[i].x, basePoints[i].y);
+    }
+    for (let i = topPoints.length - 1; i >= 0; i -= 1) {
+      ctx.lineTo(topPoints[i].x, topPoints[i].y);
+    }
+    ctx.closePath();
+
+    ctx.fillStyle = fillColor;
+    ctx.fill();
+
+    ctx.strokeStyle = strokeColor;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(topPoints[0].x, topPoints[0].y);
+    for (let i = 1; i < topPoints.length; i += 1) {
+      ctx.lineTo(topPoints[i].x, topPoints[i].y);
+    }
+    ctx.strokeStyle = this.shadeColor(fillColor, 0.2);
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
 
   drawFloor(ctx) {
