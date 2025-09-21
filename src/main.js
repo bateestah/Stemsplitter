@@ -11,6 +11,9 @@ const rotateButton = document.getElementById('rotateButton');
 const rotationLabel = document.getElementById('rotationLabel');
 const tileIndicator = document.getElementById('tileIndicator');
 const modeToggleButton = document.getElementById('modeToggle');
+const zoomInButton = document.getElementById('zoomIn');
+const zoomOutButton = document.getElementById('zoomOut');
+const zoomLevelLabel = document.getElementById('zoomLevel');
 
 const state = new GameState(14, 14);
 const avatar = new Avatar(state);
@@ -40,9 +43,24 @@ if (modeToggleButton) {
   });
 }
 
+if (zoomInButton) {
+  zoomInButton.addEventListener('click', () => {
+    renderer.zoomIn();
+    updateZoomUI();
+  });
+}
+
+if (zoomOutButton) {
+  zoomOutButton.addEventListener('click', () => {
+    renderer.zoomOut();
+    updateZoomUI();
+  });
+}
+
 updateRotationUI();
 updateTileIndicator();
 updateModeToggle();
+updateZoomUI();
 
 function updateRotationUI() {
   const isWalkMode = state.isWalkMode();
@@ -132,6 +150,21 @@ function updateModeToggle() {
 
   if (canvas) {
     canvas.classList.toggle('walk-mode', isWalkMode);
+  }
+}
+
+function updateZoomUI() {
+  if (zoomLevelLabel) {
+    const zoomPercent = Math.round(renderer.getZoomLevel() * 100);
+    zoomLevelLabel.textContent = `${zoomPercent}%`;
+  }
+
+  if (zoomInButton) {
+    zoomInButton.disabled = !renderer.canZoomIn();
+  }
+
+  if (zoomOutButton) {
+    zoomOutButton.disabled = !renderer.canZoomOut();
   }
 }
 
