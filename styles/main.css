@@ -172,6 +172,62 @@ h2 {
   max-width: min(360px, 80%);
 }
 
+.zoom-controls {
+  position: absolute;
+  right: 2rem;
+  bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(7, 9, 24, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.zoom-button {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 10px;
+  font-size: 1.4rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-primary);
+  background: linear-gradient(135deg, rgba(120, 240, 255, 0.72), rgba(107, 132, 255, 0.85));
+  box-shadow: 0 6px 16px rgba(86, 109, 255, 0.28);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  user-select: none;
+}
+
+.zoom-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgba(86, 109, 255, 0.32);
+}
+
+.zoom-button:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.7);
+  outline-offset: 2px;
+}
+
+.zoom-button:disabled,
+.zoom-button:disabled:hover {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.zoom-button span {
+  pointer-events: none;
+}
+
 .palette-panel {
   background: var(--panel-bg);
   border-radius: 16px;
