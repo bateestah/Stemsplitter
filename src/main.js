@@ -8,6 +8,8 @@ import { Avatar } from './game/Avatar.js';
 const canvas = document.getElementById('gameCanvas');
 const paletteRoot = document.getElementById('paletteRoot');
 const rotateButton = document.getElementById('rotateButton');
+const zoomOutButton = document.getElementById('zoomOutButton');
+const zoomInButton = document.getElementById('zoomInButton');
 const rotationLabel = document.getElementById('rotationLabel');
 const tileIndicator = document.getElementById('tileIndicator');
 const modeToggleButton = document.getElementById('modeToggle');
@@ -18,11 +20,14 @@ const renderer = new IsoRenderer(canvas, state, avatar);
 const input = new InputController(canvas, state, renderer, avatar);
 createPaletteView(paletteRoot, state);
 
+const ZOOM_STEP = 0.2;
+
 state.onChange(() => {
   renderer.draw();
   updateRotationUI();
   updateTileIndicator();
   updateModeToggle();
+  updateZoomControls();
 });
 
 if (rotateButton) {
@@ -40,9 +45,24 @@ if (modeToggleButton) {
   });
 }
 
+if (zoomInButton) {
+  zoomInButton.addEventListener('click', () => {
+    renderer.zoomIn(ZOOM_STEP);
+    updateZoomControls();
+  });
+}
+
+if (zoomOutButton) {
+  zoomOutButton.addEventListener('click', () => {
+    renderer.zoomOut(ZOOM_STEP);
+    updateZoomControls();
+  });
+}
+
 updateRotationUI();
 updateTileIndicator();
 updateModeToggle();
+updateZoomControls();
 
 function updateRotationUI() {
   const isWalkMode = state.isWalkMode();
@@ -132,6 +152,16 @@ function updateModeToggle() {
 
   if (canvas) {
     canvas.classList.toggle('walk-mode', isWalkMode);
+  }
+}
+
+function updateZoomControls() {
+  if (zoomOutButton) {
+    zoomOutButton.disabled = !renderer.canZoomOut();
+  }
+
+  if (zoomInButton) {
+    zoomInButton.disabled = !renderer.canZoomIn();
   }
 }
 
