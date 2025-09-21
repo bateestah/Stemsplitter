@@ -1,0 +1,14 @@
+[
+  {
+    "id": "app.title",
+    "value": "Isometric Room Builder"
+  },
+  {
+    "id": "scene.main.welcome",
+    "value": "Prototype environment ready to explore."
+  },
+  {
+    "id": "ui.loading",
+    "value": "Loading world data..."
+  }
+]

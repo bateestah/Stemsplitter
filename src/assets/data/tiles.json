@@ -1,0 +1,16 @@
+[
+  {
+    "id": "tile.grass",
+    "name": "Grass",
+    "texture": "tiles/grass",
+    "walkable": true,
+    "elevation": 0
+  },
+  {
+    "id": "tile.water",
+    "name": "Water",
+    "texture": "tiles/water",
+    "walkable": false,
+    "elevation": -1
+  }
+]
