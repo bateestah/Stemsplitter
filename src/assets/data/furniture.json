@@ -1,0 +1,26 @@
+[
+  {
+    "id": "furniture.sofa",
+    "name": "Modern Sofa",
+    "category": "seating",
+    "texture": "furniture/sofa",
+    "footprint": {
+      "width": 2,
+      "height": 1,
+      "elevation": 0
+    },
+    "interactable": true
+  },
+  {
+    "id": "furniture.lamp",
+    "name": "Floor Lamp",
+    "category": "lighting",
+    "texture": "furniture/lamp",
+    "footprint": {
+      "width": 1,
+      "height": 1,
+      "elevation": 0
+    },
+    "interactable": false
+  }
+]

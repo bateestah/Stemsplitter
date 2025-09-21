@@ -1,0 +1,24 @@
+[
+  {
+    "id": "npc.ann",
+    "name": "Ann the Architect",
+    "texture": "npcs/ann",
+    "behavior": {
+      "type": "idle",
+      "speed": 0
+    },
+    "dialogue": [
+      "Welcome to the build site!",
+      "Let's design something beautiful."
+    ]
+  },
+  {
+    "id": "npc.rio",
+    "name": "Rio the Runner",
+    "texture": "npcs/rio",
+    "behavior": {
+      "type": "wander",
+      "speed": 2
+    }
+  }
+]
