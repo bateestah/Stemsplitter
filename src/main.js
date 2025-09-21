@@ -1,6 +1,7 @@
 import { GameState } from './game/GameState.js';
 import { IsoRenderer } from './game/IsoRenderer.js';
 import { InputController } from './game/InputController.js';
+import { Avatar } from './game/Avatar.js';
 import { createPaletteView } from './ui/paletteView.js';
 import { findPaletteItem, rotationLabels } from './game/palette.js';
 
@@ -12,7 +13,9 @@ const tileIndicator = document.getElementById('tileIndicator');
 
 const state = new GameState(14, 14);
 const renderer = new IsoRenderer(canvas, state);
-const input = new InputController(canvas, state, renderer);
+const avatar = new Avatar(state);
+renderer.setAvatar(avatar);
+const input = new InputController(canvas, state, renderer, avatar);
 createPaletteView(paletteRoot, state);
 
 state.onChange(() => {
@@ -20,6 +23,23 @@ state.onChange(() => {
   updateRotationUI();
   updateTileIndicator();
 });
+
+let previousTime = null;
+function animationFrame(timestamp) {
+  if (previousTime === null) {
+    previousTime = timestamp;
+  }
+
+  const deltaSeconds = Math.min((timestamp - previousTime) / 1000, 0.25);
+  previousTime = timestamp;
+
+  avatar.update(deltaSeconds);
+  renderer.draw();
+
+  requestAnimationFrame(animationFrame);
+}
+
+requestAnimationFrame(animationFrame);
 
 if (rotateButton) {
   rotateButton.addEventListener('click', (event) => {
