@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stemsplitter Isometric Room Builder</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top-bar">
+    <div class="brand">
+      <h1>Stemsplitter Plaza</h1>
+      <p class="tagline">Build an isometric hangout inspired by Habbo Hotel.</p>
+    </div>
+  </header>
+  <main class="app">
+    <aside class="sidebar">
+      <section class="palette" id="palette">
+        <h2>Palette</h2>
+        <div class="palette-group" data-group="flooring">
+          <h3>Flooring</h3>
+          <div class="palette-options" id="floor-tools"></div>
+        </div>
+        <div class="palette-group" data-group="furni">
+          <h3>Furniture</h3>
+          <div class="palette-options" id="furni-tools"></div>
+        </div>
+        <div class="palette-group" data-group="utility">
+          <h3>Utility</h3>
+          <div class="palette-options" id="utility-tools"></div>
+        </div>
+      </section>
+      <section class="controls">
+        <h2>Room Controls</h2>
+        <button id="reset-room" class="control-button">Reset room</button>
+        <label class="toggle">
+          <input type="checkbox" id="toggle-grid" checked />
+          <span>Show grid overlay</span>
+        </label>
+      </section>
+    </aside>
+    <section class="stage">
+      <canvas id="room-canvas" width="960" height="640"></canvas>
+      <div class="hud">
+        <div class="hud-line" id="hover-readout">Hover over a tile to inspect it.</div>
+        <div class="hud-line" id="tool-readout">Active tool: <span class="value"></span></div>
+      </div>
+    </section>
+    <aside class="inspector">
+      <h2>Inspector</h2>
+      <dl class="inspector-list">
+        <div>
+          <dt>Hovered tile</dt>
+          <dd id="inspector-tile">None</dd>
+        </div>
+        <div>
+          <dt>Floor</dt>
+          <dd id="inspector-floor">-</dd>
+        </div>
+        <div>
+          <dt>Item</dt>
+          <dd id="inspector-item">-</dd>
+        </div>
+      </dl>
+      <section class="guide">
+        <h3>How to build</h3>
+        <ul>
+          <li>Select a flooring or furniture option from the palette.</li>
+          <li>Click on the isometric grid to place the selection.</li>
+          <li>Choose the broom to clear tiles or remove furniture.</li>
+        </ul>
+      </section>
+    </aside>
+  </main>
+  <footer class="footer">Crafted for the Habbo-inspired Stemsplitter project.</footer>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
