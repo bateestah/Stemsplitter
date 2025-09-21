@@ -33,22 +33,17 @@ export class IsoRenderer {
     this.avatar = avatar;
     this.ctx = canvas.getContext('2d');
 
-    this.tileWidth = 64;
-    this.tileHeight = 32;
-    this.halfTileWidth = this.tileWidth / 2;
-    this.halfTileHeight = this.tileHeight / 2;
-    this.wallHeight = this.tileHeight * 3;
+    this.baseTileWidth = 64;
+    this.baseTileHeight = 32;
+    this.minZoom = 0.6;
+    this.maxZoom = 1.6;
+    this.zoomStep = 0.2;
+    this.zoom = 1;
+    this.updateTileMetrics();
 
     this.pixelRatio = window.devicePixelRatio || 1;
     this.displayWidth = canvas.clientWidth || canvas.width;
     this.displayHeight = canvas.clientHeight || canvas.height;
-
-    this.directionVectors = [
-      { x: this.halfTileWidth, y: -this.halfTileHeight },
-      { x: this.halfTileWidth, y: this.halfTileHeight },
-      { x: -this.halfTileWidth, y: this.halfTileHeight },
-      { x: -this.halfTileWidth, y: -this.halfTileHeight }
-    ];
 
     this.forceRedraw = true;
     this.lastTimestamp = performance.now();
@@ -63,6 +58,55 @@ export class IsoRenderer {
     this.renderLoop = this.renderLoop.bind(this);
     this.drawFrame();
     this.animationFrameId = requestAnimationFrame(this.renderLoop);
+  }
+
+  updateTileMetrics() {
+    this.tileWidth = this.baseTileWidth * this.zoom;
+    this.tileHeight = this.baseTileHeight * this.zoom;
+    this.halfTileWidth = this.tileWidth / 2;
+    this.halfTileHeight = this.tileHeight / 2;
+    this.wallHeight = this.tileHeight * 3;
+
+    this.directionVectors = [
+      { x: this.halfTileWidth, y: -this.halfTileHeight },
+      { x: this.halfTileWidth, y: this.halfTileHeight },
+      { x: -this.halfTileWidth, y: this.halfTileHeight },
+      { x: -this.halfTileWidth, y: -this.halfTileHeight }
+    ];
+  }
+
+  setZoom(zoom) {
+    const value = Number.isFinite(zoom) ? zoom : this.zoom;
+    const clamped = Math.min(this.maxZoom, Math.max(this.minZoom, value));
+    if (Math.abs(clamped - this.zoom) < 0.001) {
+      return false;
+    }
+
+    this.zoom = clamped;
+    this.updateTileMetrics();
+    this.forceRedraw = true;
+    this.emitZoomChange();
+    return true;
+  }
+
+  zoomIn(step = this.zoomStep) {
+    return this.setZoom(this.zoom + step);
+  }
+
+  zoomOut(step = this.zoomStep) {
+    return this.setZoom(this.zoom - step);
+  }
+
+  canZoomIn() {
+    return this.zoom < this.maxZoom - 0.001;
+  }
+
+  canZoomOut() {
+    return this.zoom > this.minZoom + 0.001;
+  }
+
+  getZoom() {
+    return this.zoom;
   }
 
   resizeCanvas() {
@@ -442,7 +486,7 @@ export class IsoRenderer {
       return;
     }
 
-    const { position, facing, walkPhase, stride, bob, sway, lean } = avatarState;
+    const { facing, walkPhase, stride, bob, sway, lean } = avatarState;
     const forwardBase = this.directionVectors[facing % this.directionVectors.length] ?? this.directionVectors[1];
     const forward = normalizeVec(forwardBase);
     const right = normalizeVec({ x: forward.y, y: -forward.x });
@@ -450,28 +494,37 @@ export class IsoRenderer {
     const baseX = screenX;
     const baseY = screenY + this.halfTileHeight;
 
+    const scale = this.zoom;
+    const px = value => value * scale;
+    const scaledBob = bob * scale;
+    const scaledSway = sway * scale;
+    const scaledLean = lean * scale;
+
     ctx.save();
 
     ctx.fillStyle = 'rgba(10, 15, 35, 0.42)';
     ctx.beginPath();
-    ctx.ellipse(baseX, baseY + 2.5, this.halfTileWidth * 0.36, this.halfTileHeight * 0.55, 0, 0, TWO_PI);
+    ctx.ellipse(baseX, baseY + px(2.5), this.halfTileWidth * 0.36, this.halfTileHeight * 0.55, 0, 0, TWO_PI);
     ctx.fill();
 
     const cycle = walkPhase * TWO_PI;
     const swing = Math.sin(cycle) * stride;
-    const legSpread = 7;
-    const stepDistance = 10;
+    const legSpread = px(7);
+    const stepDistance = px(10);
     const leftSwing = swing;
     const rightSwing = -swing;
-    const leftLift = Math.max(0, leftSwing) * 8;
-    const rightLift = Math.max(0, rightSwing) * 8;
+    const leftLift = Math.max(0, leftSwing) * px(8);
+    const rightLift = Math.max(0, rightSwing) * px(8);
 
-    const swayOffset = scaleVec(right, sway);
-    const leanOffset = scaleVec(forward, lean * 0.1);
-    const hip = addVec(addVec({ x: baseX, y: baseY - 24 - bob }, swayOffset), leanOffset);
-    const footBase = addVec(addVec({ x: baseX, y: baseY }, scaleVec(right, sway * 0.2)), scaleVec(forward, lean * 0.04));
-    const chest = addVec(hip, { x: 0, y: -18 });
-    const shoulderBase = addVec(chest, { x: 0, y: -6 });
+    const swayOffset = scaleVec(right, scaledSway);
+    const leanOffset = scaleVec(forward, scaledLean * 0.1);
+    const hip = addVec(addVec({ x: baseX, y: baseY - px(24) - scaledBob }, swayOffset), leanOffset);
+    const footBase = addVec(
+      addVec({ x: baseX, y: baseY }, scaleVec(right, scaledSway * 0.2)),
+      scaleVec(forward, scaledLean * 0.04)
+    );
+    const chest = addVec(hip, { x: 0, y: -px(18) });
+    const shoulderBase = addVec(chest, { x: 0, y: -px(6) });
 
     const leftFoot = addVec(
       footBase,
@@ -484,18 +537,18 @@ export class IsoRenderer {
 
     const leftKnee = addVec(
       lerpVec(hip, leftFoot, 0.45),
-      addVec(scaleVec(forward, leftSwing * 3.6), scaleVec(right, -leftSwing * 1.6))
+      addVec(scaleVec(forward, leftSwing * 3.6 * scale), scaleVec(right, -leftSwing * 1.6 * scale))
     );
     const rightKnee = addVec(
       lerpVec(hip, rightFoot, 0.45),
-      addVec(scaleVec(forward, rightSwing * 3.6), scaleVec(right, rightSwing * 1.6))
+      addVec(scaleVec(forward, rightSwing * 3.6 * scale), scaleVec(right, rightSwing * 1.6 * scale))
     );
 
-    const hipOffset = 4;
+    const hipOffset = px(4);
     const hipLeft = addVec(hip, scaleVec(right, -hipOffset));
     const hipRight = addVec(hip, scaleVec(right, hipOffset));
 
-    const armSpread = 9;
+    const armSpread = px(9);
     const shoulderLeft = addVec(shoulderBase, scaleVec(right, -armSpread));
     const shoulderRight = addVec(shoulderBase, scaleVec(right, armSpread));
     const armForward = stepDistance * 0.65;
@@ -504,23 +557,29 @@ export class IsoRenderer {
 
     const leftHand = addVec(
       shoulderLeft,
-      addVec(scaleVec(forward, leftArmSwing * armForward + lean * 0.05), { x: 0, y: 16 + Math.max(0, leftArmSwing) * 6 })
+      addVec(
+        scaleVec(forward, leftArmSwing * armForward + scaledLean * 0.05),
+        { x: 0, y: px(16) + Math.max(0, leftArmSwing) * px(6) }
+      )
     );
     const rightHand = addVec(
       shoulderRight,
-      addVec(scaleVec(forward, rightArmSwing * armForward + lean * 0.05), { x: 0, y: 16 + Math.max(0, rightArmSwing) * 6 })
+      addVec(
+        scaleVec(forward, rightArmSwing * armForward + scaledLean * 0.05),
+        { x: 0, y: px(16) + Math.max(0, rightArmSwing) * px(6) }
+      )
     );
 
     const leftElbow = addVec(
       lerpVec(shoulderLeft, leftHand, 0.45),
-      addVec(scaleVec(forward, leftArmSwing * -2.4), scaleVec(right, -leftArmSwing * 1.2))
+      addVec(scaleVec(forward, leftArmSwing * -2.4 * scale), scaleVec(right, -leftArmSwing * 1.2 * scale))
     );
     const rightElbow = addVec(
       lerpVec(shoulderRight, rightHand, 0.45),
-      addVec(scaleVec(forward, rightArmSwing * -2.4), scaleVec(right, rightArmSwing * 1.2))
+      addVec(scaleVec(forward, rightArmSwing * -2.4 * scale), scaleVec(right, rightArmSwing * 1.2 * scale))
     );
 
-    const headCenter = addVec(shoulderBase, { x: 0, y: -12 - bob * 0.25 });
+    const headCenter = addVec(shoulderBase, { x: 0, y: -px(12) - scaledBob * 0.25 });
 
     const limbs = {
       left: {
@@ -549,7 +608,7 @@ export class IsoRenderer {
 
     const drawLeg = (segment, color) => {
       ctx.strokeStyle = color;
-      ctx.lineWidth = 6;
+      ctx.lineWidth = 6 * scale;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.beginPath();
@@ -560,13 +619,13 @@ export class IsoRenderer {
 
       ctx.fillStyle = this.shadeColor(color, -0.25);
       ctx.beginPath();
-      ctx.ellipse(segment.foot.x, segment.foot.y, 5.6, 2.8, 0, 0, TWO_PI);
+      ctx.ellipse(segment.foot.x, segment.foot.y, 5.6 * scale, 2.8 * scale, 0, 0, TWO_PI);
       ctx.fill();
     };
 
     const drawArm = (segment, color, width) => {
       ctx.strokeStyle = color;
-      ctx.lineWidth = width;
+      ctx.lineWidth = width * scale;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.beginPath();
@@ -577,17 +636,17 @@ export class IsoRenderer {
 
       ctx.fillStyle = handHighlight;
       ctx.beginPath();
-      ctx.arc(segment.hand.x, segment.hand.y, 2.4, 0, TWO_PI);
+      ctx.arc(segment.hand.x, segment.hand.y, 2.4 * scale, 0, TWO_PI);
       ctx.fill();
     };
 
     drawLeg(limbs[backSide].leg, legBackColor);
     drawArm(limbs[backSide].arm, skinBack, 4.2);
 
-    const waistLeft = addVec(hip, scaleVec(right, -7.6));
-    const waistRight = addVec(hip, scaleVec(right, 7.6));
-    const shoulderLeftEdge = addVec(shoulderBase, scaleVec(right, -6.6));
-    const shoulderRightEdge = addVec(shoulderBase, scaleVec(right, 6.6));
+    const waistLeft = addVec(hip, scaleVec(right, -7.6 * scale));
+    const waistRight = addVec(hip, scaleVec(right, 7.6 * scale));
+    const shoulderLeftEdge = addVec(shoulderBase, scaleVec(right, -6.6 * scale));
+    const shoulderRightEdge = addVec(shoulderBase, scaleVec(right, 6.6 * scale));
 
     const torsoGradient = ctx.createLinearGradient(
       shoulderLeftEdge.x,
@@ -609,17 +668,17 @@ export class IsoRenderer {
     ctx.fill();
 
     ctx.strokeStyle = 'rgba(12, 18, 44, 0.55)';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 * scale;
     ctx.beginPath();
     ctx.moveTo(waistLeft.x, waistLeft.y);
     ctx.lineTo(waistRight.x, waistRight.y);
     ctx.stroke();
 
-    const collarCenter = addVec(shoulderBase, { x: 0, y: -3.8 });
-    const collarLeft = addVec(collarCenter, scaleVec(right, -4));
-    const collarRight = addVec(collarCenter, scaleVec(right, 4));
+    const collarCenter = addVec(shoulderBase, { x: 0, y: -px(3.8) });
+    const collarLeft = addVec(collarCenter, scaleVec(right, -4 * scale));
+    const collarRight = addVec(collarCenter, scaleVec(right, 4 * scale));
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.5 * scale;
     ctx.beginPath();
     ctx.moveTo(collarLeft.x, collarLeft.y);
     ctx.lineTo(collarRight.x, collarRight.y);
@@ -629,81 +688,81 @@ export class IsoRenderer {
     drawArm(limbs[frontSide].arm, skinFront, 4.8);
 
     const headGradient = ctx.createRadialGradient(
-      headCenter.x - 2,
-      headCenter.y - 3,
-      1.5,
+      headCenter.x - px(2),
+      headCenter.y - px(3),
+      1.5 * scale,
       headCenter.x,
       headCenter.y,
-      8.6
+      8.6 * scale
     );
     headGradient.addColorStop(0, '#ffe3c4');
     headGradient.addColorStop(1, '#f2b18d');
 
     ctx.fillStyle = headGradient;
     ctx.beginPath();
-    ctx.arc(headCenter.x, headCenter.y, 8.6, 0, TWO_PI);
+    ctx.arc(headCenter.x, headCenter.y, 8.6 * scale, 0, TWO_PI);
     ctx.fill();
     ctx.strokeStyle = 'rgba(34, 32, 56, 0.35)';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1 * scale;
     ctx.stroke();
 
     const hairGradient = ctx.createLinearGradient(
-      headCenter.x - 6,
-      headCenter.y - 10,
-      headCenter.x + 6,
+      headCenter.x - px(6),
+      headCenter.y - px(10),
+      headCenter.x + px(6),
       headCenter.y
     );
     hairGradient.addColorStop(0, hairBase);
     hairGradient.addColorStop(1, hairHighlight);
 
-    const hairTop = addVec(headCenter, { x: 0, y: -7 });
+    const hairTop = addVec(headCenter, { x: 0, y: -px(7) });
     ctx.fillStyle = hairGradient;
     ctx.beginPath();
-    ctx.ellipse(hairTop.x + right.x * 1.8, hairTop.y, 9, 6.8, 0, 0, TWO_PI);
+    ctx.ellipse(hairTop.x + right.x * px(1.8), hairTop.y, 9 * scale, 6.8 * scale, 0, 0, TWO_PI);
     ctx.fill();
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-    ctx.lineWidth = 1.1;
+    ctx.lineWidth = 1.1 * scale;
     ctx.beginPath();
-    ctx.moveTo(headCenter.x + right.x * -3.5, headCenter.y - 2.5);
-    ctx.lineTo(headCenter.x + right.x * 2.8, headCenter.y - 4.1);
+    ctx.moveTo(headCenter.x + right.x * -px(3.5), headCenter.y - px(2.5));
+    ctx.lineTo(headCenter.x + right.x * px(2.8), headCenter.y - px(4.1));
     ctx.stroke();
 
-    const eyeBase = addVec(headCenter, { x: 0, y: 1.6 });
-    const leftEye = addVec(eyeBase, addVec(scaleVec(right, -2.4), scaleVec(forward, 0.4)));
-    const rightEye = addVec(eyeBase, addVec(scaleVec(right, 2.4), scaleVec(forward, 0.4)));
+    const eyeBase = addVec(headCenter, { x: 0, y: px(1.6) });
+    const leftEye = addVec(eyeBase, addVec(scaleVec(right, -2.4 * scale), scaleVec(forward, 0.4 * scale)));
+    const rightEye = addVec(eyeBase, addVec(scaleVec(right, 2.4 * scale), scaleVec(forward, 0.4 * scale)));
     const eyeLineY = (leftEye.y + rightEye.y) / 2;
     const adjustedLeftEye = { x: leftEye.x, y: eyeLineY };
     const adjustedRightEye = { x: rightEye.x, y: eyeLineY };
     ctx.fillStyle = '#2f2947';
     ctx.beginPath();
-    ctx.arc(adjustedLeftEye.x, adjustedLeftEye.y, 1.15, 0, TWO_PI);
+    ctx.arc(adjustedLeftEye.x, adjustedLeftEye.y, 1.15 * scale, 0, TWO_PI);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(adjustedRightEye.x, adjustedRightEye.y, 1.15, 0, TWO_PI);
+    ctx.arc(adjustedRightEye.x, adjustedRightEye.y, 1.15 * scale, 0, TWO_PI);
     ctx.fill();
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     ctx.beginPath();
-    ctx.arc(adjustedLeftEye.x + 0.5, adjustedLeftEye.y - 0.4, 0.4, 0, TWO_PI);
+    ctx.arc(adjustedLeftEye.x + px(0.5), adjustedLeftEye.y - px(0.4), 0.4 * scale, 0, TWO_PI);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(adjustedRightEye.x + 0.5, adjustedRightEye.y - 0.4, 0.4, 0, TWO_PI);
+    ctx.arc(adjustedRightEye.x + px(0.5), adjustedRightEye.y - px(0.4), 0.4 * scale, 0, TWO_PI);
     ctx.fill();
 
-    const nose = addVec(headCenter, addVec({ x: 0, y: 2.2 }, scaleVec(forward, 0.8)));
+    const nose = addVec(headCenter, addVec({ x: 0, y: px(2.2) }, scaleVec(forward, 0.8 * scale)));
     ctx.strokeStyle = 'rgba(206, 122, 100, 0.42)';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 1 * scale;
     ctx.beginPath();
-    ctx.moveTo(nose.x, nose.y - 1.1);
-    ctx.lineTo(nose.x, nose.y + 1.2);
+    ctx.moveTo(nose.x, nose.y - px(1.1));
+    ctx.lineTo(nose.x, nose.y + px(1.2));
     ctx.stroke();
 
-    const mouth = addVec(headCenter, { x: 0, y: 4.8 });
+    const mouth = addVec(headCenter, { x: 0, y: px(4.8) });
     ctx.strokeStyle = '#ce7b63';
-    ctx.lineWidth = 1.2;
+    ctx.lineWidth = 1.2 * scale;
     ctx.beginPath();
-    ctx.arc(mouth.x, mouth.y, 2.3, Math.PI * 0.1, Math.PI - Math.PI * 0.1);
+    ctx.arc(mouth.x, mouth.y, 2.3 * scale, Math.PI * 0.1, Math.PI - Math.PI * 0.1);
     ctx.stroke();
 
     ctx.restore();
@@ -802,6 +861,17 @@ export class IsoRenderer {
     const dx = Math.abs(px - centerX);
     const dy = Math.abs(py - centerY);
     return dx / this.halfTileWidth + dy / this.halfTileHeight <= 1;
+  }
+
+  emitZoomChange() {
+    if (!this.canvas || typeof this.canvas.dispatchEvent !== 'function') {
+      return;
+    }
+
+    const event = new CustomEvent('iso-renderer-zoom-change', {
+      detail: { zoom: this.zoom }
+    });
+    this.canvas.dispatchEvent(event);
   }
 
   destroy() {

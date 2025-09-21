@@ -43,6 +43,26 @@
       <main class="app-main">
         <section class="scene-panel">
           <canvas id="gameCanvas" width="960" height="640"></canvas>
+          <div class="zoom-controls" role="group" aria-label="Zoom controls">
+            <button
+              id="zoomInButton"
+              class="zoom-button"
+              type="button"
+              aria-label="Zoom in"
+              title="Zoom in"
+            >
+              <span aria-hidden="true">+</span>
+            </button>
+            <button
+              id="zoomOutButton"
+              class="zoom-button"
+              type="button"
+              aria-label="Zoom out"
+              title="Zoom out"
+            >
+              <span aria-hidden="true">−</span>
+            </button>
+          </div>
           <div class="tile-indicator" id="tileIndicator">Hover over the room to inspect tiles.</div>
         </section>
         <aside class="palette-panel">
@@ -59,6 +79,7 @@
               <li><span>Right click</span> Remove furniture from the hovered tile</li>
               <li><span>R / Shift + R</span> Rotate hovered furniture or cycle the selection (Shift reverses)</li>
               <li><span>Shift + click</span> Sample the hovered floor style</li>
+              <li><span>Zoom buttons</span> Use + and − to adjust your view of the room</li>
             </ul>
           </div>
         </aside>
