@@ -672,20 +672,23 @@ export class IsoRenderer {
     const eyeBase = addVec(headCenter, { x: 0, y: 1.6 });
     const leftEye = addVec(eyeBase, addVec(scaleVec(right, -2.4), scaleVec(forward, 0.4)));
     const rightEye = addVec(eyeBase, addVec(scaleVec(right, 2.4), scaleVec(forward, 0.4)));
+    const eyeLineY = (leftEye.y + rightEye.y) / 2;
+    const adjustedLeftEye = { x: leftEye.x, y: eyeLineY };
+    const adjustedRightEye = { x: rightEye.x, y: eyeLineY };
     ctx.fillStyle = '#2f2947';
     ctx.beginPath();
-    ctx.arc(leftEye.x, leftEye.y, 1.15, 0, TWO_PI);
+    ctx.arc(adjustedLeftEye.x, adjustedLeftEye.y, 1.15, 0, TWO_PI);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(rightEye.x, rightEye.y, 1.15, 0, TWO_PI);
+    ctx.arc(adjustedRightEye.x, adjustedRightEye.y, 1.15, 0, TWO_PI);
     ctx.fill();
 
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     ctx.beginPath();
-    ctx.arc(leftEye.x + 0.5, leftEye.y - 0.4, 0.4, 0, TWO_PI);
+    ctx.arc(adjustedLeftEye.x + 0.5, adjustedLeftEye.y - 0.4, 0.4, 0, TWO_PI);
     ctx.fill();
     ctx.beginPath();
-    ctx.arc(rightEye.x + 0.5, rightEye.y - 0.4, 0.4, 0, TWO_PI);
+    ctx.arc(adjustedRightEye.x + 0.5, adjustedRightEye.y - 0.4, 0.4, 0, TWO_PI);
     ctx.fill();
 
     const nose = addVec(headCenter, addVec({ x: 0, y: 2.2 }, scaleVec(forward, 0.8)));
