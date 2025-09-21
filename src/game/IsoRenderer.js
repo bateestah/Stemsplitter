@@ -233,8 +233,10 @@ export class IsoRenderer {
   }
 
   drawFurnitureBlock(ctx, sx, sy, definition, rotation) {
-    const base = this.getTileVertices(sx, sy);
-    const top = this.getTileVertices(sx, sy - definition.height);
+    const footprintCenterX = sx;
+    const footprintCenterY = sy + this.halfTileHeight;
+    const base = this.getTileVertices(footprintCenterX, footprintCenterY);
+    const top = this.getTileVertices(footprintCenterX, footprintCenterY - definition.height);
 
     this.drawFurnitureShadow(ctx, base, definition.height);
 
@@ -281,30 +283,39 @@ export class IsoRenderer {
     ctx.lineTo(top.top.x, top.top.y);
     ctx.stroke();
 
-    this.drawOrientationCue(ctx, top, rotation);
+    this.drawOrientationCue(ctx, base, top, rotation);
   }
 
   drawFurnitureShadow(ctx, base, height) {
     const intensity = Math.min(0.35, 0.2 + height / 300);
     ctx.save();
     ctx.fillStyle = `rgba(6, 10, 26, ${intensity.toFixed(2)})`;
+    const centerX = (base.left.x + base.right.x) / 2;
+    const centerY = (base.top.y + base.bottom.y) / 2 + this.halfTileHeight + 6;
     ctx.beginPath();
-    ctx.ellipse(base.bottom.x, base.bottom.y + 6, this.halfTileWidth * 0.85, this.halfTileHeight * 0.65, 0, 0, Math.PI * 2);
+    ctx.ellipse(centerX, centerY, this.halfTileWidth * 0.85, this.halfTileHeight * 0.65, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
 
-  drawOrientationCue(ctx, top, rotation) {
-    const centerX = (top.left.x + top.right.x) / 2;
-    const centerY = (top.top.y + top.bottom.y) / 2;
+  drawOrientationCue(ctx, base, top, rotation) {
+    const topCenterX = (top.left.x + top.right.x) / 2;
+    const topCenterY = (top.top.y + top.bottom.y) / 2;
+    const baseCenterX = (base.left.x + base.right.x) / 2;
+    const baseCenterY = (base.top.y + base.bottom.y) / 2;
+    const originX = (topCenterX + baseCenterX) / 2;
+    const originY = (topCenterY + baseCenterY) / 2;
     const targets = [top.right, top.bottom, top.left, top.top];
-    const target = targets[rotation % targets.length];
+    const index = ((rotation % targets.length) + targets.length) % targets.length;
+    const target = targets[index];
+    const cueEndX = (topCenterX + target.x) / 2;
+    const cueEndY = (topCenterY + target.y) / 2;
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
     ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.moveTo(centerX, centerY);
-    ctx.lineTo((centerX + target.x) / 2, (centerY + target.y) / 2);
+    ctx.moveTo(originX, originY);
+    ctx.lineTo(cueEndX, cueEndY);
     ctx.stroke();
   }
 
@@ -356,12 +367,12 @@ export class IsoRenderer {
     ctx.closePath();
   }
 
-  getTileVertices(sx, sy) {
+  getTileVertices(cx, cy) {
     return {
-      top: { x: sx, y: sy },
-      right: { x: sx + this.halfTileWidth, y: sy + this.halfTileHeight },
-      bottom: { x: sx, y: sy + this.tileHeight },
-      left: { x: sx - this.halfTileWidth, y: sy + this.halfTileHeight }
+      top: { x: cx, y: cy - this.halfTileHeight },
+      right: { x: cx + this.halfTileWidth, y: cy },
+      bottom: { x: cx, y: cy + this.halfTileHeight },
+      left: { x: cx - this.halfTileWidth, y: cy }
     };
   }
 
