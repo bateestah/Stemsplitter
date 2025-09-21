@@ -16,8 +16,13 @@ export class IsoRenderer {
     this.displayWidth = canvas.clientWidth || canvas.width;
     this.displayHeight = canvas.clientHeight || canvas.height;
 
+    this.renderLoopHandle = null;
+    this.lastTimestamp = null;
+    this.renderLoop = this.renderLoop.bind(this);
+
     window.addEventListener('resize', () => this.draw());
     this.draw();
+    this.startAnimationLoop();
   }
 
   resizeCanvas() {
@@ -61,7 +66,36 @@ export class IsoRenderer {
     this.drawFloor(ctx);
     this.drawHoverFill(ctx);
     this.drawFurniture(ctx);
+    this.drawAvatar(ctx);
     this.drawHoverOutline(ctx);
+  }
+
+  startAnimationLoop() {
+    if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
+      return;
+    }
+
+    if (this.renderLoopHandle) {
+      window.cancelAnimationFrame(this.renderLoopHandle);
+    }
+
+    this.renderLoopHandle = window.requestAnimationFrame(this.renderLoop);
+  }
+
+  renderLoop(timestamp) {
+    if (this.lastTimestamp === null) {
+      this.lastTimestamp = timestamp;
+    }
+
+    const deltaSeconds = Math.min((timestamp - this.lastTimestamp) / 1000, 0.25);
+    this.lastTimestamp = timestamp;
+
+    if (this.state?.avatar) {
+      this.state.avatar.update(deltaSeconds);
+    }
+
+    this.draw();
+    this.renderLoopHandle = window.requestAnimationFrame(this.renderLoop);
   }
 
   drawWalls(ctx) {
@@ -230,6 +264,227 @@ export class IsoRenderer {
         this.drawFurnitureBlock(ctx, screenX, screenY, definition, furniture.rotation ?? 0);
       }
     }
+  }
+
+  drawAvatar(ctx) {
+    const avatar = this.state.avatar;
+    if (!avatar || !avatar.position) {
+      return;
+    }
+
+    const { position } = avatar;
+    const { x: screenX, y: screenY } = this.gridToScreen(position.x, position.y);
+    const baseX = screenX;
+    const baseY = screenY + this.halfTileHeight;
+
+    ctx.save();
+    ctx.translate(baseX, baseY);
+
+    ctx.save();
+    ctx.scale(1, 0.6);
+    ctx.fillStyle = 'rgba(12, 16, 34, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, this.halfTileWidth * 0.35, this.halfTileWidth * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    const facing = avatar.facing ?? 'se';
+    const horizontalDir = facing === 'sw' || facing === 'nw' ? -1 : 1;
+    const verticalDir = facing === 'ne' || facing === 'nw' ? -1 : 1;
+
+    const cycle = ((avatar.walkCycle % 1) + 1) % 1;
+    const cycleRadians = cycle * Math.PI * 2;
+    const strideBase = avatar.isMoving ? Math.sin(cycleRadians) : 0;
+    const bobOffset = avatar.isMoving
+      ? Math.sin(cycleRadians * 2) * 1.3
+      : Math.sin(avatar.idleTime * 2.4) * 0.6;
+
+    const nearStride = verticalDir > 0 ? strideBase : -strideBase;
+    const farStride = -nearStride;
+
+    const footSpacing = 6;
+    const swingRange = 3;
+    const liftRange = 5.5;
+    const nearFootX = horizontalDir * footSpacing + nearStride * swingRange;
+    const farFootX = -horizontalDir * footSpacing + farStride * swingRange;
+    const nearLift = avatar.isMoving ? Math.max(0, nearStride) * liftRange : 0;
+    const farLift = avatar.isMoving ? Math.max(0, farStride) * liftRange : 0;
+    const nearFootY = -nearLift;
+    const farFootY = -farLift;
+
+    const hipY = -18;
+    const hipSpacing = 3.6;
+    const nearHipX = horizontalDir * hipSpacing;
+    const farHipX = -horizontalDir * hipSpacing;
+    const shoulderY = hipY - 10;
+    const shoulderSpacing = 5.6;
+    const nearShoulderX = horizontalDir * shoulderSpacing;
+    const farShoulderX = -horizontalDir * shoulderSpacing;
+
+    const torsoTop = shoulderY + 1;
+    const torsoBottom = hipY + 6;
+
+    const skinTone = '#f5d7b5';
+    const legColor = '#27386d';
+    const legHighlight = '#1b2649';
+    const shoeColor = '#0a1027';
+    const shirtColor = '#3b5ddc';
+    const shirtShadow = '#2f4bc3';
+    const accentColor = '#2a3ca1';
+    const hairColor = '#1a1333';
+
+    ctx.translate(0, -6 + bobOffset);
+
+    const drawLeg = (hipX, footX, footY, stride, isFront) => {
+      ctx.save();
+      ctx.globalAlpha = isFront ? 1 : 0.72;
+
+      const kneeOffset = 4 + Math.abs(stride) * 6;
+      const kneeX = (hipX + footX) / 2;
+      const kneeY = (hipY + footY) / 2 - kneeOffset;
+
+      ctx.lineWidth = 5;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = legColor;
+      ctx.beginPath();
+      ctx.moveTo(hipX, hipY);
+      ctx.quadraticCurveTo(kneeX, kneeY, footX, footY);
+      ctx.stroke();
+
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = legHighlight;
+      ctx.beginPath();
+      ctx.moveTo(hipX, hipY + 1);
+      ctx.quadraticCurveTo((hipX + kneeX) / 2, (hipY + kneeY) / 2 - 2, (hipX + footX) / 2, (hipY + footY) / 2);
+      ctx.stroke();
+
+      ctx.save();
+      ctx.translate(footX, footY);
+      ctx.rotate((footX - hipX) * 0.06);
+      ctx.fillStyle = shoeColor;
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 5, 2.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.restore();
+    };
+
+    const drawArm = (shoulderX, stride, isFront) => {
+      ctx.save();
+      ctx.globalAlpha = isFront ? 1 : 0.75;
+
+      const swing = stride * 0.7;
+      const elbowX = shoulderX + swing * 6;
+      const elbowY = shoulderY + 6;
+      const handX = shoulderX + swing * 5;
+      const handY = shoulderY + 14;
+
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = accentColor;
+      ctx.beginPath();
+      ctx.moveTo(shoulderX, shoulderY);
+      ctx.quadraticCurveTo(elbowX, elbowY, handX, handY);
+      ctx.stroke();
+
+      ctx.strokeStyle = skinTone;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(handX, handY);
+      ctx.lineTo(handX + swing * 2, handY + 4);
+      ctx.stroke();
+
+      ctx.fillStyle = skinTone;
+      ctx.beginPath();
+      ctx.arc(handX + swing, handY + 2, 2.1, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.restore();
+    };
+
+    const legOrder = verticalDir > 0 ? ['far', 'near'] : ['near', 'far'];
+    legOrder.forEach(side => {
+      if (side === 'near') {
+        drawLeg(nearHipX, nearFootX, nearFootY, nearStride, true);
+      } else {
+        drawLeg(farHipX, farFootX, farFootY, farStride, false);
+      }
+    });
+
+    ctx.save();
+    const torsoWidth = 14;
+    ctx.beginPath();
+    ctx.moveTo(-torsoWidth / 2, torsoTop);
+    ctx.lineTo(torsoWidth / 2, torsoTop);
+    ctx.lineTo(torsoWidth / 2 + 2, torsoBottom);
+    ctx.quadraticCurveTo(0, torsoBottom + 6, -torsoWidth / 2 - 2, torsoBottom);
+    ctx.closePath();
+    ctx.fillStyle = shirtColor;
+    ctx.fill();
+    ctx.strokeStyle = shirtShadow;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    const beltY = hipY + 1;
+    ctx.strokeStyle = '#141a38';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(-torsoWidth / 2 + 1, beltY);
+    ctx.lineTo(torsoWidth / 2 - 1, beltY);
+    ctx.stroke();
+
+    const collarY = shoulderY + 1;
+    ctx.fillStyle = accentColor;
+    ctx.beginPath();
+    ctx.moveTo(-torsoWidth / 2 + 2, collarY);
+    ctx.lineTo(0, collarY - 3);
+    ctx.lineTo(torsoWidth / 2 - 2, collarY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    const armOrder = verticalDir > 0 ? ['far', 'near'] : ['near', 'far'];
+    armOrder.forEach(side => {
+      if (side === 'near') {
+        drawArm(nearShoulderX, -nearStride, true);
+      } else {
+        drawArm(farShoulderX, -farStride, false);
+      }
+    });
+
+    ctx.save();
+    const headY = shoulderY - 6;
+    ctx.fillStyle = skinTone;
+    ctx.beginPath();
+    ctx.arc(0, headY, 6.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = hairColor;
+    ctx.beginPath();
+    ctx.arc(0, headY - 2, 6.6, Math.PI, Math.PI * 2);
+    ctx.lineTo(3 * horizontalDir, headY + 2);
+    ctx.lineTo(-3 * horizontalDir, headY + 2);
+    ctx.closePath();
+    ctx.fill();
+
+    const faceOffset = horizontalDir * 0.8;
+    const eyeOffsetY = verticalDir > 0 ? -1 : -1.5;
+    ctx.fillStyle = '#1d223d';
+    ctx.beginPath();
+    ctx.arc(-2 + faceOffset, headY + eyeOffsetY, 0.9, 0, Math.PI * 2);
+    ctx.arc(2 + faceOffset, headY + eyeOffsetY, 0.9, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#e57a64';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(-2 + faceOffset, headY + 3);
+    ctx.quadraticCurveTo(faceOffset * 0.3, headY + 4.2, 2 + faceOffset, headY + 3);
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.restore();
   }
 
   drawFurnitureBlock(ctx, sx, sy, definition, rotation) {

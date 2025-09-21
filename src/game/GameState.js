@@ -1,4 +1,5 @@
 import { palette, findPaletteItem, getDefaultSelection } from './palette.js';
+import { Avatar } from './Avatar.js';
 
 export class GameState {
   constructor(width, height) {
@@ -14,6 +15,10 @@ export class GameState {
     this.hoveredTile = null;
 
     this.listeners = new Set();
+
+    const startX = Math.floor(this.width / 2);
+    const startY = Math.floor(this.height / 2);
+    this.avatar = new Avatar(startX, startY);
   }
 
   index(x, y) {
@@ -191,5 +196,18 @@ export class GameState {
     this.selectedCategory = 'floor';
     this.selectedItemId = floorId;
     this.notifyChange();
+  }
+
+  moveAvatarTo(x, y) {
+    if (!this.avatar || !this.isInside(x, y)) {
+      return false;
+    }
+
+    const changed = this.avatar.setTarget(x, y);
+    if (changed) {
+      this.notifyChange();
+    }
+
+    return changed;
   }
 }
