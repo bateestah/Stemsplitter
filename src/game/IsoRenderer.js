@@ -1,6 +1,15 @@
 import { findPaletteItem } from './palette.js';
 
 const TWO_PI = Math.PI * 2;
+const DEFAULT_TILE_WIDTH = 64;
+const DEFAULT_TILE_HEIGHT = 32;
+const MIN_ZOOM = 0.6;
+const MAX_ZOOM = 1.6;
+const ZOOM_EPSILON = 1e-3;
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
 
 function addVec(a, b) {
   return { x: a.x + b.x, y: a.y + b.y };
@@ -33,22 +42,16 @@ export class IsoRenderer {
     this.avatar = avatar;
     this.ctx = canvas.getContext('2d');
 
-    this.tileWidth = 64;
-    this.tileHeight = 32;
-    this.halfTileWidth = this.tileWidth / 2;
-    this.halfTileHeight = this.tileHeight / 2;
-    this.wallHeight = this.tileHeight * 3;
+    this.baseTileWidth = DEFAULT_TILE_WIDTH;
+    this.baseTileHeight = DEFAULT_TILE_HEIGHT;
+    this.minZoom = MIN_ZOOM;
+    this.maxZoom = MAX_ZOOM;
+    this.zoom = 1;
+    this.updateIsoMetrics();
 
     this.pixelRatio = window.devicePixelRatio || 1;
     this.displayWidth = canvas.clientWidth || canvas.width;
     this.displayHeight = canvas.clientHeight || canvas.height;
-
-    this.directionVectors = [
-      { x: this.halfTileWidth, y: -this.halfTileHeight },
-      { x: this.halfTileWidth, y: this.halfTileHeight },
-      { x: -this.halfTileWidth, y: this.halfTileHeight },
-      { x: -this.halfTileWidth, y: -this.halfTileHeight }
-    ];
 
     this.forceRedraw = true;
     this.lastTimestamp = performance.now();
@@ -63,6 +66,52 @@ export class IsoRenderer {
     this.renderLoop = this.renderLoop.bind(this);
     this.drawFrame();
     this.animationFrameId = requestAnimationFrame(this.renderLoop);
+  }
+
+  updateIsoMetrics() {
+    this.tileWidth = this.baseTileWidth * this.zoom;
+    this.tileHeight = this.baseTileHeight * this.zoom;
+    this.halfTileWidth = this.tileWidth / 2;
+    this.halfTileHeight = this.tileHeight / 2;
+    this.wallHeight = this.tileHeight * 3;
+    this.directionVectors = [
+      { x: this.halfTileWidth, y: -this.halfTileHeight },
+      { x: this.halfTileWidth, y: this.halfTileHeight },
+      { x: -this.halfTileWidth, y: this.halfTileHeight },
+      { x: -this.halfTileWidth, y: -this.halfTileHeight }
+    ];
+  }
+
+  setZoom(zoom) {
+    const clamped = clamp(zoom, this.minZoom, this.maxZoom);
+    if (Math.abs(clamped - this.zoom) < ZOOM_EPSILON) {
+      return false;
+    }
+
+    this.zoom = clamped;
+    this.updateIsoMetrics();
+    this.forceRedraw = true;
+    return true;
+  }
+
+  zoomIn(step = 0.2) {
+    return this.setZoom(this.zoom + step);
+  }
+
+  zoomOut(step = 0.2) {
+    return this.setZoom(this.zoom - step);
+  }
+
+  canZoomIn() {
+    return this.zoom < this.maxZoom - ZOOM_EPSILON;
+  }
+
+  canZoomOut() {
+    return this.zoom > this.minZoom + ZOOM_EPSILON;
+  }
+
+  getZoom() {
+    return this.zoom;
   }
 
   resizeCanvas() {
