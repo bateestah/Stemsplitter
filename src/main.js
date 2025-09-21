@@ -3,22 +3,26 @@ import { IsoRenderer } from './game/IsoRenderer.js';
 import { InputController } from './game/InputController.js';
 import { createPaletteView } from './ui/paletteView.js';
 import { findPaletteItem, rotationLabels } from './game/palette.js';
+import { Avatar } from './game/Avatar.js';
 
 const canvas = document.getElementById('gameCanvas');
 const paletteRoot = document.getElementById('paletteRoot');
 const rotateButton = document.getElementById('rotateButton');
 const rotationLabel = document.getElementById('rotationLabel');
 const tileIndicator = document.getElementById('tileIndicator');
+const modeToggleButton = document.getElementById('modeToggle');
 
 const state = new GameState(14, 14);
-const renderer = new IsoRenderer(canvas, state);
-const input = new InputController(canvas, state, renderer);
+const avatar = new Avatar(state);
+const renderer = new IsoRenderer(canvas, state, avatar);
+const input = new InputController(canvas, state, renderer, avatar);
 createPaletteView(paletteRoot, state);
 
 state.onChange(() => {
   renderer.draw();
   updateRotationUI();
   updateTileIndicator();
+  updateModeToggle();
 });
 
 if (rotateButton) {
@@ -30,10 +34,18 @@ if (rotateButton) {
   });
 }
 
+if (modeToggleButton) {
+  modeToggleButton.addEventListener('click', () => {
+    state.setInteractionMode(state.isWalkMode() ? 'build' : 'walk');
+  });
+}
+
 updateRotationUI();
 updateTileIndicator();
+updateModeToggle();
 
 function updateRotationUI() {
+  const isWalkMode = state.isWalkMode();
   const isFurnitureSelection = state.selectedCategory === 'furniture';
   const hovered = state.hoveredTile;
   const hoveredFurniture = hovered ? state.getFurnitureAt(hovered.x, hovered.y) : null;
@@ -41,10 +53,15 @@ function updateRotationUI() {
   const canRotateHovered = Boolean(hoveredFurniture);
 
   if (rotateButton) {
-    rotateButton.disabled = !canRotateSelection && !canRotateHovered;
+    rotateButton.disabled = isWalkMode || (!canRotateSelection && !canRotateHovered);
   }
 
   if (!rotationLabel) {
+    return;
+  }
+
+  if (isWalkMode) {
+    rotationLabel.textContent = 'Walk mode active — avatar follows your clicks';
     return;
   }
 
@@ -68,9 +85,12 @@ function updateTileIndicator() {
     return;
   }
 
+  const isWalkMode = state.isWalkMode();
   const hovered = state.hoveredTile;
   if (!hovered) {
-    tileIndicator.textContent = 'Hover over the room to inspect tiles.';
+    tileIndicator.textContent = isWalkMode
+      ? 'Walk mode active — click a tile to send the avatar exploring.'
+      : 'Hover over the room to inspect tiles.';
     return;
   }
 
@@ -80,7 +100,7 @@ function updateTileIndicator() {
   const floorDefinition = findPaletteItem('floor', floorId);
   const floorName = floorDefinition?.name ?? 'Unknown floor';
 
-  let message = `Tile (${x + 1}, ${y + 1}) · Floor: ${floorName}`;
+  let message = `${isWalkMode ? 'Walk mode · ' : ''}Tile (${x + 1}, ${y + 1}) · Floor: ${floorName}`;
 
   if (furnitureData) {
     const furnitureDefinition = findPaletteItem('furniture', furnitureData.id);
@@ -91,9 +111,31 @@ function updateTileIndicator() {
     message += ' · Furniture: empty';
   }
 
+  if (isWalkMode) {
+    message += ' · Click to walk here';
+  }
+
   tileIndicator.textContent = message;
+}
+
+function updateModeToggle() {
+  const isWalkMode = state.isWalkMode();
+
+  if (modeToggleButton) {
+    modeToggleButton.classList.toggle('active', isWalkMode);
+    modeToggleButton.textContent = isWalkMode ? 'Walk Mode: On' : 'Walk Mode: Off';
+    modeToggleButton.setAttribute('aria-pressed', isWalkMode ? 'true' : 'false');
+    modeToggleButton.title = isWalkMode
+      ? 'Click to return to build mode and resume editing.'
+      : 'Click to control the avatar with left clicks.';
+  }
+
+  if (canvas) {
+    canvas.classList.toggle('walk-mode', isWalkMode);
+  }
 }
 
 window.addEventListener('beforeunload', () => {
   input.destroy();
+  renderer.destroy();
 });

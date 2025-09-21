@@ -94,6 +94,23 @@ h2 {
   box-shadow: 0 10px 22px rgba(255, 141, 0, 0.35);
 }
 
+.mode-toggle {
+  background: linear-gradient(135deg, #78f0ff, #5c8dff 55%, #8d6fff);
+  color: #0f163d;
+  box-shadow: 0 6px 18px rgba(122, 180, 255, 0.32);
+}
+
+.mode-toggle.active {
+  background: linear-gradient(135deg, #7fffd4, #64ddff 55%, #7f97ff);
+  box-shadow: 0 10px 24px rgba(110, 196, 255, 0.4);
+  color: #0b1234;
+}
+
+.mode-toggle:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.65);
+  outline-offset: 2px;
+}
+
 .action-button:disabled,
 .action-button:disabled:hover {
   opacity: 0.55;
@@ -135,6 +152,10 @@ h2 {
   border: 1px solid rgba(92, 107, 218, 0.25);
   touch-action: none;
   cursor: crosshair;
+}
+
+.scene-panel canvas.walk-mode {
+  cursor: pointer;
 }
 
 .tile-indicator {
