@@ -10,6 +10,7 @@ export class IsoRenderer {
     this.tileHeight = 32;
     this.halfTileWidth = this.tileWidth / 2;
     this.halfTileHeight = this.tileHeight / 2;
+    this.wallHeight = this.tileHeight * 3;
 
     this.pixelRatio = window.devicePixelRatio || 1;
     this.displayWidth = canvas.clientWidth || canvas.width;
@@ -35,10 +36,11 @@ export class IsoRenderer {
 
     const mapPixelWidth = (this.state.width + this.state.height) * this.halfTileWidth;
     const mapPixelHeight = (this.state.width + this.state.height) * this.halfTileHeight;
+    const totalHeight = mapPixelHeight + this.wallHeight;
 
     this.originX = this.displayWidth / 2;
-    const verticalPadding = Math.max(40, (this.displayHeight - mapPixelHeight) / 2);
-    this.originY = verticalPadding;
+    const verticalPadding = Math.max(40, (this.displayHeight - totalHeight) / 2);
+    this.originY = verticalPadding + this.wallHeight;
     this.maxX = this.originX + mapPixelWidth / 2;
     this.minX = this.originX - mapPixelWidth / 2;
     this.maxY = this.originY + mapPixelHeight;
@@ -56,10 +58,80 @@ export class IsoRenderer {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     ctx.scale(this.pixelRatio, this.pixelRatio);
 
+    this.drawWalls(ctx);
     this.drawFloor(ctx);
     this.drawHoverFill(ctx);
     this.drawFurniture(ctx);
     this.drawHoverOutline(ctx);
+  }
+
+  drawWalls(ctx) {
+    if (this.state.width <= 0 || this.state.height <= 0) {
+      return;
+    }
+
+    const topBase = this.gridToScreen(0, 0);
+    const topVerts = this.getTileVertices(topBase.x, topBase.y);
+    const topCorner = topVerts.top;
+
+    const rightBase = this.gridToScreen(this.state.width - 1, 0);
+    const rightVerts = this.getTileVertices(rightBase.x, rightBase.y);
+    const rightCorner = rightVerts.right;
+
+    const leftBase = this.gridToScreen(0, this.state.height - 1);
+    const leftVerts = this.getTileVertices(leftBase.x, leftBase.y);
+    const leftCorner = leftVerts.left;
+
+    const topCornerRaised = { x: topCorner.x, y: topCorner.y - this.wallHeight };
+    const rightCornerRaised = { x: rightCorner.x, y: rightCorner.y - this.wallHeight };
+    const leftCornerRaised = { x: leftCorner.x, y: leftCorner.y - this.wallHeight };
+
+    const baseColor = '#c7cadc';
+    const rightFill = this.shadeColor(baseColor, -0.18);
+    const leftFill = this.shadeColor(baseColor, -0.32);
+    const edgeColor = this.shadeColor(baseColor, -0.45);
+    const highlightColor = this.shadeColor(baseColor, 0.18);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(topCorner.x, topCorner.y);
+    ctx.lineTo(rightCorner.x, rightCorner.y);
+    ctx.lineTo(rightCornerRaised.x, rightCornerRaised.y);
+    ctx.lineTo(topCornerRaised.x, topCornerRaised.y);
+    ctx.closePath();
+    ctx.fillStyle = rightFill;
+    ctx.fill();
+    ctx.strokeStyle = edgeColor;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(topCorner.x, topCorner.y);
+    ctx.lineTo(leftCorner.x, leftCorner.y);
+    ctx.lineTo(leftCornerRaised.x, leftCornerRaised.y);
+    ctx.lineTo(topCornerRaised.x, topCornerRaised.y);
+    ctx.closePath();
+    ctx.fillStyle = leftFill;
+    ctx.fill();
+    ctx.strokeStyle = edgeColor;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = highlightColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(topCornerRaised.x, topCornerRaised.y);
+    ctx.lineTo(rightCornerRaised.x, rightCornerRaised.y);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(topCornerRaised.x, topCornerRaised.y);
+    ctx.lineTo(leftCornerRaised.x, leftCornerRaised.y);
+    ctx.stroke();
+    ctx.restore();
   }
 
   drawFloor(ctx) {
