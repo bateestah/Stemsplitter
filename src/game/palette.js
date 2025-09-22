@@ -31,6 +31,7 @@ export const palette = {
       name: 'Retro Sofa',
       color: '#ff6f91',
       height: 52,
+      shape: 'retro-sofa',
       description: 'A plush loveseat ready for lobby lounging.'
     },
     {
@@ -38,6 +39,7 @@ export const palette = {
       name: 'Lofi Table',
       color: '#c3a38a',
       height: 34,
+      shape: 'lofi-table',
       description: 'Low wooden table for coffee cups and gossip mags.'
     },
     {
@@ -45,6 +47,7 @@ export const palette = {
       name: 'Neon Lamp',
       color: '#8bf6ff',
       height: 72,
+      shape: 'neon-lamp',
       description: 'Glowing column that washes the room in ambient light.'
     },
     {
@@ -52,6 +55,7 @@ export const palette = {
       name: 'Palm Plant',
       color: '#6bd88f',
       height: 64,
+      shape: 'palm-plant',
       description: 'Tropical greenery to give the suite a vacation vibe.'
     }
   ]
