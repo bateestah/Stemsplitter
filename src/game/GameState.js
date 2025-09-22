@@ -218,4 +218,8 @@ export class GameState {
     this.selectedItemId = floorId;
     this.notifyChange();
   }
+
+  refresh() {
+    this.notifyChange();
+  }
 }
