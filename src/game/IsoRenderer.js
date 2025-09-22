@@ -406,10 +406,13 @@ export class IsoRenderer {
       left: { x: centerX - this.halfTileWidth, y: layerCenterY }
     });
 
-    const base = buildLayer(centerY);
-    const top = buildLayer(centerY - definition.height);
+    const baseHeight = Number.isFinite(definition.height) ? definition.height : 0;
+    const scaledHeight = baseHeight * this.zoom;
 
-    this.drawFurnitureShadow(ctx, { x: centerX, y: centerY }, definition.height);
+    const base = buildLayer(centerY);
+    const top = buildLayer(centerY - scaledHeight);
+
+    this.drawFurnitureShadow(ctx, { x: centerX, y: centerY }, baseHeight);
 
     const leftColor = this.shadeColor(definition.color, -0.35);
     const rightColor = this.shadeColor(definition.color, -0.18);
