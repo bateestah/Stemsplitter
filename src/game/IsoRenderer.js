@@ -411,6 +411,9 @@ export class IsoRenderer {
       case 'palm-plant':
         this.drawPalmPlant(ctx, sx, sy, definition, rotation);
         break;
+      case 'block':
+        this.drawFurnitureBlock(ctx, sx, sy, definition, rotation);
+        break;
       default:
         this.drawFurnitureBlock(ctx, sx, sy, definition, rotation);
         break;
