@@ -26,6 +26,10 @@ function lerpVec(a, b, t) {
   };
 }
 
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
 export class IsoRenderer {
   constructor(canvas, state, avatar) {
     this.canvas = canvas;
@@ -388,10 +392,31 @@ export class IsoRenderer {
 
     for (const entry of entries) {
       if (entry.type === 'furniture') {
-        this.drawFurnitureBlock(ctx, entry.screenX, entry.screenY, entry.definition, entry.rotation);
+        this.drawFurniture(ctx, entry.screenX, entry.screenY, entry.definition, entry.rotation);
       } else if (entry.type === 'avatar') {
         this.drawAvatar(ctx, entry.avatarState, entry.screenX, entry.screenY);
       }
+    }
+  }
+
+  drawFurniture(ctx, sx, sy, definition, rotation) {
+    const shape = definition?.shape ?? definition?.modelId ?? definition?.id;
+    switch (shape) {
+      case 'retro-sofa':
+        this.drawRetroSofa(ctx, sx, sy, definition, rotation);
+        break;
+      case 'lofi-table':
+        this.drawLofiTable(ctx, sx, sy, definition, rotation);
+        break;
+      case 'neon-lamp':
+        this.drawNeonLamp(ctx, sx, sy, definition, rotation);
+        break;
+      case 'palm-plant':
+        this.drawPalmPlant(ctx, sx, sy, definition, rotation);
+        break;
+      default:
+        this.drawFurnitureBlock(ctx, sx, sy, definition, rotation);
+        break;
     }
   }
 
@@ -399,18 +424,11 @@ export class IsoRenderer {
     const centerX = sx;
     const centerY = sy + this.halfTileHeight;
 
-    const buildLayer = layerCenterY => ({
-      top: { x: centerX, y: layerCenterY - this.halfTileHeight },
-      right: { x: centerX + this.halfTileWidth, y: layerCenterY },
-      bottom: { x: centerX, y: layerCenterY + this.halfTileHeight },
-      left: { x: centerX - this.halfTileWidth, y: layerCenterY }
-    });
-
     const baseHeight = Number.isFinite(definition.height) ? definition.height : 0;
     const scaledHeight = baseHeight * this.zoom;
 
-    const base = buildLayer(centerY);
-    const top = buildLayer(centerY - scaledHeight);
+    const base = this.getLayerPoints(centerX, centerY);
+    const top = this.getLayerPoints(centerX, centerY - scaledHeight);
 
     this.drawFurnitureShadow(ctx, { x: centerX, y: centerY }, baseHeight);
 
@@ -460,6 +478,414 @@ export class IsoRenderer {
     this.drawOrientationCue(ctx, top, rotation);
   }
 
+  drawRetroSofa(ctx, sx, sy, definition, rotation) {
+    const centerX = sx;
+    const centerY = sy + this.halfTileHeight;
+    const baseHeight = Number.isFinite(definition.height) ? definition.height : 0;
+    const scaledHeight = baseHeight * this.zoom;
+
+    if (scaledHeight <= 0) {
+      this.drawFurnitureBlock(ctx, sx, sy, definition, rotation);
+      return;
+    }
+
+    this.drawFurnitureShadow(ctx, { x: centerX, y: centerY }, baseHeight);
+
+    const baseColor = definition?.color ?? '#ff6f91';
+    const seatHeight = Math.max(scaledHeight * 0.45, this.zoom * 8);
+    const backHeight = scaledHeight;
+
+    const baseLayer = this.getLayerPoints(centerX, centerY);
+    const seatTopLayer = this.getLayerPoints(centerX, centerY - seatHeight);
+    const backTopLayer = this.getLayerPoints(centerX, centerY - backHeight);
+
+    const baseCenter = { x: centerX, y: centerY };
+    const seatTopCenter = { x: centerX, y: centerY - seatHeight };
+    const backTopCenter = { x: centerX, y: centerY - backHeight };
+
+    const seatBase = this.computeInsetFootprint(baseLayer, baseCenter, rotation, {
+      side: 0.28,
+      frontSide: 0.24,
+      backSide: 0.34,
+      frontDepth: 0.2,
+      backDepth: 0.36
+    });
+    const seatTop = this.computeInsetFootprint(seatTopLayer, seatTopCenter, rotation, {
+      side: 0.32,
+      frontSide: 0.32,
+      backSide: 0.4,
+      frontDepth: 0.33,
+      backDepth: 0.48
+    });
+
+    this.drawPrism(ctx, seatBase, seatTop, {
+      leftColor: this.shadeColor(baseColor, -0.38),
+      rightColor: this.shadeColor(baseColor, -0.2),
+      topColor: this.shadeColor(baseColor, 0.12),
+      strokeColor: this.shadeColor(baseColor, -0.48)
+    });
+
+    const backBase = this.computeInsetFootprint(seatTopLayer, seatTopCenter, rotation, {
+      side: 0.3,
+      frontSide: 0.34,
+      backSide: 0.24,
+      frontDepth: 0.62,
+      backDepth: 0.16
+    });
+    const backTop = this.computeInsetFootprint(backTopLayer, backTopCenter, rotation, {
+      side: 0.28,
+      frontSide: 0.38,
+      backSide: 0.2,
+      frontDepth: 0.78,
+      backDepth: 0.08
+    });
+
+    this.drawPrism(ctx, backBase, backTop, {
+      leftColor: this.shadeColor(baseColor, -0.32),
+      rightColor: this.shadeColor(baseColor, -0.14),
+      topColor: this.shadeColor(baseColor, 0.2),
+      strokeColor: this.shadeColor(baseColor, -0.52)
+    });
+
+    ctx.strokeStyle = this.shadeColor(baseColor, 0.3);
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(seatTop.frontLeft.x, seatTop.frontLeft.y);
+    ctx.lineTo(seatTop.frontRight.x, seatTop.frontRight.y);
+    ctx.stroke();
+
+    ctx.strokeStyle = this.shadeColor(baseColor, -0.52);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(seatTop.backLeft.x, seatTop.backLeft.y);
+    ctx.lineTo(seatTop.backRight.x, seatTop.backRight.y);
+    ctx.stroke();
+
+    ctx.strokeStyle = this.shadeColor(baseColor, 0.26);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(backTop.frontLeft.x, backTop.frontLeft.y);
+    ctx.lineTo(backTop.frontRight.x, backTop.frontRight.y);
+    ctx.stroke();
+
+    this.drawOrientationCue(ctx, backTopLayer, rotation);
+  }
+
+  drawLofiTable(ctx, sx, sy, definition, rotation) {
+    const centerX = sx;
+    const centerY = sy + this.halfTileHeight;
+    const baseHeight = Number.isFinite(definition.height) ? definition.height : 0;
+    const scaledHeight = baseHeight * this.zoom;
+
+    if (scaledHeight <= 0) {
+      this.drawFurnitureBlock(ctx, sx, sy, definition, rotation);
+      return;
+    }
+
+    this.drawFurnitureShadow(ctx, { x: centerX, y: centerY }, baseHeight);
+
+    const woodColor = definition?.color ?? '#c3a38a';
+    const boardThickness = Math.max(this.zoom * 5, scaledHeight * 0.25);
+    const boardBottomHeight = Math.max(0, scaledHeight - boardThickness);
+
+    const baseLayer = this.getLayerPoints(centerX, centerY);
+    const boardBottomLayer = this.getLayerPoints(centerX, centerY - boardBottomHeight);
+    const boardTopLayer = this.getLayerPoints(centerX, centerY - scaledHeight);
+
+    const boardBottomCenter = { x: centerX, y: centerY - boardBottomHeight };
+    const boardTopCenter = { x: centerX, y: centerY - scaledHeight };
+
+    const boardBase = this.computeInsetFootprint(boardBottomLayer, boardBottomCenter, rotation, {
+      side: 0.28,
+      frontSide: 0.28,
+      backSide: 0.32,
+      frontDepth: 0.24,
+      backDepth: 0.3
+    });
+    const boardTop = this.computeInsetFootprint(boardTopLayer, boardTopCenter, rotation, {
+      side: 0.32,
+      frontSide: 0.32,
+      backSide: 0.36,
+      frontDepth: 0.3,
+      backDepth: 0.36
+    });
+
+    this.drawPrism(ctx, boardBase, boardTop, {
+      leftColor: this.shadeColor(woodColor, -0.38),
+      rightColor: this.shadeColor(woodColor, -0.22),
+      topColor: this.shadeColor(woodColor, 0.1),
+      strokeColor: this.shadeColor(woodColor, -0.48)
+    });
+
+    ctx.strokeStyle = this.shadeColor(woodColor, 0.28);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(boardTop.frontLeft.x, boardTop.frontLeft.y);
+    ctx.lineTo(boardTop.frontRight.x, boardTop.frontRight.y);
+    ctx.stroke();
+
+    if (boardBottomHeight > this.zoom * 1.5) {
+      const { forward, right } = this.getOrientationBasis(rotation);
+      const forwardSpan = this.tileHeight * 0.55;
+      const sideSpan = this.halfTileWidth * 0.6;
+      const legDepth = this.tileHeight * 0.18;
+      const legWidth = this.halfTileWidth * 0.11;
+      const legTopDepth = legDepth * 0.7;
+      const legTopWidth = legWidth * 0.7;
+      const legTopCenterY = centerY - boardBottomHeight;
+
+      const legPositions = [
+        { forward: 0.45, side: -0.32 },
+        { forward: 0.45, side: 0.32 },
+        { forward: -0.4, side: -0.32 },
+        { forward: -0.4, side: 0.32 }
+      ];
+
+      for (const leg of legPositions) {
+        const offset = addVec(
+          scaleVec(forward, forwardSpan * leg.forward),
+          scaleVec(right, sideSpan * leg.side)
+        );
+        const baseCenter = addVec({ x: centerX, y: centerY }, offset);
+        const topCenter = addVec({ x: centerX, y: legTopCenterY }, offset);
+
+        const basePolygon = this.buildOrientedFootprint(baseCenter, forward, right, legDepth, legWidth);
+        const topPolygon = this.buildOrientedFootprint(topCenter, forward, right, legTopDepth, legTopWidth);
+
+        this.drawPrism(ctx, basePolygon, topPolygon, {
+          leftColor: this.shadeColor(woodColor, -0.5),
+          rightColor: this.shadeColor(woodColor, -0.32),
+          topColor: this.shadeColor(woodColor, -0.18),
+          strokeColor: this.shadeColor(woodColor, -0.56)
+        });
+      }
+    }
+
+    this.drawOrientationCue(ctx, boardTopLayer, rotation);
+  }
+
+  drawNeonLamp(ctx, sx, sy, definition, rotation) {
+    const centerX = sx;
+    const centerY = sy + this.halfTileHeight;
+    const baseHeight = Number.isFinite(definition.height) ? definition.height : 0;
+    const scaledHeight = baseHeight * this.zoom;
+
+    if (scaledHeight <= 0) {
+      this.drawFurnitureBlock(ctx, sx, sy, definition, rotation);
+      return;
+    }
+
+    this.drawFurnitureShadow(ctx, { x: centerX, y: centerY }, baseHeight);
+
+    const glowColor = definition?.color ?? '#8bf6ff';
+    const baseThickness = Math.max(this.zoom * 5, scaledHeight * 0.16);
+    const glowHeight = Math.max(this.zoom * 8, scaledHeight * 0.28);
+    const columnHeight = Math.max(0, scaledHeight - glowHeight - baseThickness);
+    const columnTopHeight = baseThickness + columnHeight;
+    const glowBottomHeight = Math.max(columnTopHeight, scaledHeight - glowHeight);
+
+    const baseBottomLayer = this.getLayerPoints(centerX, centerY);
+    const baseTopLayer = this.getLayerPoints(centerX, centerY - baseThickness);
+    const columnTopLayer = this.getLayerPoints(centerX, centerY - columnTopHeight);
+    const glowBottomLayer = this.getLayerPoints(centerX, centerY - glowBottomHeight);
+    const glowTopLayer = this.getLayerPoints(centerX, centerY - scaledHeight);
+
+    const baseBottomCenter = { x: centerX, y: centerY };
+    const baseTopCenter = { x: centerX, y: centerY - baseThickness };
+    const columnTopCenter = { x: centerX, y: centerY - columnTopHeight };
+    const glowBottomCenter = { x: centerX, y: centerY - glowBottomHeight };
+    const glowTopCenter = { x: centerX, y: centerY - scaledHeight };
+
+    const baseBottom = this.computeInsetFootprint(baseBottomLayer, baseBottomCenter, rotation, {
+      side: 0.42,
+      frontDepth: 0.28,
+      backDepth: 0.28
+    });
+    const baseTop = this.computeInsetFootprint(baseTopLayer, baseTopCenter, rotation, {
+      side: 0.35,
+      frontDepth: 0.35,
+      backDepth: 0.35
+    });
+
+    this.drawPrism(ctx, baseBottom, baseTop, {
+      leftColor: this.shadeColor(glowColor, -0.55),
+      rightColor: this.shadeColor(glowColor, -0.38),
+      topColor: this.shadeColor(glowColor, -0.25),
+      strokeColor: this.shadeColor(glowColor, -0.6)
+    });
+
+    if (columnHeight > this.zoom * 2) {
+      const columnBottom = this.computeInsetFootprint(baseTopLayer, baseTopCenter, rotation, {
+        side: 0.25,
+        frontDepth: 0.32,
+        backDepth: 0.32
+      });
+      const columnTop = this.computeInsetFootprint(columnTopLayer, columnTopCenter, rotation, {
+        side: 0.2,
+        frontDepth: 0.38,
+        backDepth: 0.38
+      });
+
+      this.drawPrism(ctx, columnBottom, columnTop, {
+        leftColor: this.shadeColor(glowColor, -0.42),
+        rightColor: this.shadeColor(glowColor, -0.25),
+        topColor: this.shadeColor(glowColor, -0.08),
+        strokeColor: this.shadeColor(glowColor, -0.5)
+      });
+    }
+
+    const glowBottom = this.computeInsetFootprint(glowBottomLayer, glowBottomCenter, rotation, {
+      side: 0.28,
+      frontDepth: 0.45,
+      backDepth: 0.45
+    });
+    const glowTop = this.computeInsetFootprint(glowTopLayer, glowTopCenter, rotation, {
+      side: 0.35,
+      frontDepth: 0.55,
+      backDepth: 0.55
+    });
+
+    this.drawPrism(ctx, glowBottom, glowTop, {
+      leftColor: this.shadeColor(glowColor, -0.25),
+      rightColor: this.shadeColor(glowColor, -0.08),
+      topColor: this.shadeColor(glowColor, 0.22),
+      strokeColor: this.shadeColor(glowColor, -0.32)
+    });
+
+    ctx.strokeStyle = this.shadeColor(glowColor, 0.35);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(glowTop.frontLeft.x, glowTop.frontLeft.y);
+    ctx.lineTo(glowTop.frontRight.x, glowTop.frontRight.y);
+    ctx.stroke();
+
+    this.drawOrientationCue(ctx, glowTopLayer, rotation);
+  }
+
+  drawPalmPlant(ctx, sx, sy, definition, rotation) {
+    const centerX = sx;
+    const centerY = sy + this.halfTileHeight;
+    const baseHeight = Number.isFinite(definition.height) ? definition.height : 0;
+    const scaledHeight = baseHeight * this.zoom;
+
+    if (scaledHeight <= 0) {
+      this.drawFurnitureBlock(ctx, sx, sy, definition, rotation);
+      return;
+    }
+
+    this.drawFurnitureShadow(ctx, { x: centerX, y: centerY }, baseHeight);
+
+    const foliageColor = definition?.color ?? '#6bd88f';
+    const potHeight = Math.max(this.zoom * 6, scaledHeight * 0.28);
+    const canopyHeight = Math.max(0, scaledHeight - potHeight);
+
+    const baseLayer = this.getLayerPoints(centerX, centerY);
+    const potTopLayer = this.getLayerPoints(centerX, centerY - potHeight);
+    const canopyTopLayer = this.getLayerPoints(centerX, centerY - scaledHeight);
+
+    const baseCenter = { x: centerX, y: centerY };
+    const potTopCenter = { x: centerX, y: centerY - potHeight };
+    const canopyTopCenter = { x: centerX, y: centerY - scaledHeight };
+
+    const potBase = this.computeInsetFootprint(baseLayer, baseCenter, rotation, {
+      side: 0.3,
+      frontDepth: 0.22,
+      backDepth: 0.26
+    });
+    const potTop = this.computeInsetFootprint(potTopLayer, potTopCenter, rotation, {
+      side: 0.36,
+      frontDepth: 0.32,
+      backDepth: 0.36
+    });
+
+    this.drawPrism(ctx, potBase, potTop, {
+      leftColor: this.shadeColor(foliageColor, -0.55),
+      rightColor: this.shadeColor(foliageColor, -0.38),
+      topColor: this.shadeColor(foliageColor, -0.18),
+      strokeColor: this.shadeColor(foliageColor, -0.48)
+    });
+
+    ctx.strokeStyle = this.shadeColor(foliageColor, -0.3);
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    ctx.moveTo(potTop.frontLeft.x, potTop.frontLeft.y);
+    ctx.lineTo(potTop.frontRight.x, potTop.frontRight.y);
+    ctx.stroke();
+
+    if (canopyHeight <= this.zoom * 2) {
+      this.drawOrientationCue(ctx, potTopLayer, rotation);
+      return;
+    }
+
+    const canopyBottom = this.computeInsetFootprint(potTopLayer, potTopCenter, rotation, {
+      side: 0.4,
+      frontDepth: 0.34,
+      backDepth: 0.4
+    });
+    const canopyTop = this.computeInsetFootprint(canopyTopLayer, canopyTopCenter, rotation, {
+      side: 0.28,
+      frontDepth: 0.62,
+      backDepth: 0.55
+    });
+
+    this.drawPrism(ctx, canopyBottom, canopyTop, {
+      leftColor: this.shadeColor(foliageColor, -0.28),
+      rightColor: this.shadeColor(foliageColor, -0.12),
+      strokeColor: this.shadeColor(foliageColor, -0.4)
+    });
+
+    const frontMid = {
+      x: (canopyTop.frontLeft.x + canopyTop.frontRight.x) / 2,
+      y: (canopyTop.frontLeft.y + canopyTop.frontRight.y) / 2
+    };
+    const backMid = {
+      x: (canopyTop.backLeft.x + canopyTop.backRight.x) / 2,
+      y: (canopyTop.backLeft.y + canopyTop.backRight.y) / 2
+    };
+    const leftMid = {
+      x: (canopyTop.frontLeft.x + canopyTop.backLeft.x) / 2,
+      y: (canopyTop.frontLeft.y + canopyTop.backLeft.y) / 2
+    };
+    const rightMid = {
+      x: (canopyTop.frontRight.x + canopyTop.backRight.x) / 2,
+      y: (canopyTop.frontRight.y + canopyTop.backRight.y) / 2
+    };
+
+    ctx.fillStyle = this.shadeColor(foliageColor, 0.16);
+    ctx.beginPath();
+    ctx.moveTo(canopyTop.frontLeft.x, canopyTop.frontLeft.y);
+    ctx.quadraticCurveTo(frontMid.x, frontMid.y - this.tileHeight * 0.15, canopyTop.frontRight.x, canopyTop.frontRight.y);
+    ctx.quadraticCurveTo(
+      rightMid.x + this.halfTileWidth * 0.06,
+      rightMid.y - this.tileHeight * 0.1,
+      canopyTop.backRight.x,
+      canopyTop.backRight.y
+    );
+    ctx.quadraticCurveTo(backMid.x, backMid.y + this.tileHeight * 0.08, canopyTop.backLeft.x, canopyTop.backLeft.y);
+    ctx.quadraticCurveTo(
+      leftMid.x - this.halfTileWidth * 0.06,
+      leftMid.y - this.tileHeight * 0.1,
+      canopyTop.frontLeft.x,
+      canopyTop.frontLeft.y
+    );
+    ctx.fill();
+
+    ctx.strokeStyle = this.shadeColor(foliageColor, -0.1);
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(frontMid.x, frontMid.y - this.tileHeight * 0.12);
+    ctx.lineTo(backMid.x, backMid.y + this.tileHeight * 0.05);
+    ctx.stroke();
+
+    ctx.strokeStyle = this.shadeColor(foliageColor, 0.28);
+    ctx.beginPath();
+    ctx.moveTo(leftMid.x - this.halfTileWidth * 0.04, leftMid.y - this.tileHeight * 0.08);
+    ctx.lineTo(rightMid.x + this.halfTileWidth * 0.04, rightMid.y - this.tileHeight * 0.04);
+    ctx.stroke();
+
+    this.drawOrientationCue(ctx, canopyTopLayer, rotation);
+  }
+
   drawFurnitureShadow(ctx, center, height) {
     const intensity = Math.min(0.35, 0.2 + height / 300);
     ctx.save();
@@ -482,6 +908,134 @@ export class IsoRenderer {
     ctx.moveTo(centerX, centerY);
     ctx.lineTo((centerX + target.x) / 2, (centerY + target.y) / 2);
     ctx.stroke();
+  }
+
+  drawPrism(ctx, base, top, colors) {
+    const {
+      leftColor,
+      rightColor,
+      topColor,
+      strokeColor,
+      strokeWidth = 1
+    } = colors ?? {};
+
+    if (leftColor) {
+      ctx.beginPath();
+      ctx.moveTo(top.backLeft.x, top.backLeft.y);
+      ctx.lineTo(top.frontLeft.x, top.frontLeft.y);
+      ctx.lineTo(base.frontLeft.x, base.frontLeft.y);
+      ctx.lineTo(base.backLeft.x, base.backLeft.y);
+      ctx.closePath();
+      ctx.fillStyle = leftColor;
+      ctx.fill();
+    }
+
+    if (rightColor) {
+      ctx.beginPath();
+      ctx.moveTo(top.frontRight.x, top.frontRight.y);
+      ctx.lineTo(top.backRight.x, top.backRight.y);
+      ctx.lineTo(base.backRight.x, base.backRight.y);
+      ctx.lineTo(base.frontRight.x, base.frontRight.y);
+      ctx.closePath();
+      ctx.fillStyle = rightColor;
+      ctx.fill();
+    }
+
+    if (topColor) {
+      ctx.beginPath();
+      ctx.moveTo(top.frontLeft.x, top.frontLeft.y);
+      ctx.lineTo(top.frontRight.x, top.frontRight.y);
+      ctx.lineTo(top.backRight.x, top.backRight.y);
+      ctx.lineTo(top.backLeft.x, top.backLeft.y);
+      ctx.closePath();
+      ctx.fillStyle = topColor;
+      ctx.fill();
+    }
+
+    if (strokeColor) {
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = strokeWidth;
+      ctx.beginPath();
+      ctx.moveTo(top.frontLeft.x, top.frontLeft.y);
+      ctx.lineTo(top.frontRight.x, top.frontRight.y);
+      ctx.lineTo(top.backRight.x, top.backRight.y);
+      ctx.lineTo(top.backLeft.x, top.backLeft.y);
+      ctx.closePath();
+      ctx.stroke();
+    }
+  }
+
+  computeInsetFootprint(layer, center, rotation, options = {}) {
+    const { frontKey, rightKey, backKey, leftKey } = this.getRotationKeys(rotation);
+
+    const defaultSide = clamp(options.side ?? 0.35, 0, 1);
+    const frontLeftSide = clamp(options.frontLeftSide ?? options.frontSide ?? defaultSide, 0, 1);
+    const frontRightSide = clamp(options.frontRightSide ?? options.frontSide ?? defaultSide, 0, 1);
+    const backLeftSide = clamp(options.backLeftSide ?? options.backSide ?? defaultSide, 0, 1);
+    const backRightSide = clamp(options.backRightSide ?? options.backSide ?? defaultSide, 0, 1);
+
+    const defaultDepth = clamp(options.depth ?? 0.3, 0, 1);
+    const frontLeftDepth = clamp(options.frontLeftDepth ?? options.frontDepth ?? defaultDepth, 0, 1);
+    const frontRightDepth = clamp(options.frontRightDepth ?? options.frontDepth ?? defaultDepth, 0, 1);
+    const backLeftDepth = clamp(options.backLeftDepth ?? options.backDepth ?? defaultDepth, 0, 1);
+    const backRightDepth = clamp(options.backRightDepth ?? options.backDepth ?? defaultDepth, 0, 1);
+
+    const frontLeftEdge = lerpVec(layer[frontKey], layer[leftKey], frontLeftSide);
+    const frontRightEdge = lerpVec(layer[frontKey], layer[rightKey], frontRightSide);
+    const backLeftEdge = lerpVec(layer[backKey], layer[leftKey], backLeftSide);
+    const backRightEdge = lerpVec(layer[backKey], layer[rightKey], backRightSide);
+
+    return {
+      frontLeft: lerpVec(frontLeftEdge, center, frontLeftDepth),
+      frontRight: lerpVec(frontRightEdge, center, frontRightDepth),
+      backLeft: lerpVec(backLeftEdge, center, backLeftDepth),
+      backRight: lerpVec(backRightEdge, center, backRightDepth)
+    };
+  }
+
+  getLayerPoints(centerX, layerCenterY) {
+    return {
+      top: { x: centerX, y: layerCenterY - this.halfTileHeight },
+      right: { x: centerX + this.halfTileWidth, y: layerCenterY },
+      bottom: { x: centerX, y: layerCenterY + this.halfTileHeight },
+      left: { x: centerX - this.halfTileWidth, y: layerCenterY }
+    };
+  }
+
+  getRotationKeys(rotation) {
+    const order = ['right', 'bottom', 'left', 'top'];
+    const normalized = ((rotation % order.length) + order.length) % order.length;
+    return {
+      frontKey: order[normalized],
+      rightKey: order[(normalized + 1) % order.length],
+      backKey: order[(normalized + 2) % order.length],
+      leftKey: order[(normalized + 3) % order.length]
+    };
+  }
+
+  getOrientationBasis(rotation) {
+    const normalized = ((rotation % this.directionVectors.length) + this.directionVectors.length) % this.directionVectors.length;
+    const forwardBase = this.directionVectors[normalized] ?? this.directionVectors[0];
+    const forward = normalizeVec(forwardBase);
+    const right = normalizeVec({ x: forward.y, y: -forward.x });
+    return { forward, right };
+  }
+
+  buildOrientedFootprint(center, forwardDir, rightDir, depth, width) {
+    const frontOffset = scaleVec(forwardDir, depth);
+    const backOffset = scaleVec(forwardDir, -depth);
+    const rightOffset = scaleVec(rightDir, width);
+    const leftOffset = scaleVec(rightDir, -width);
+
+    const frontCenter = addVec(center, frontOffset);
+    const backCenter = addVec(center, backOffset);
+
+    return {
+      frontLeft: addVec(frontCenter, leftOffset),
+      frontRight: addVec(frontCenter, rightOffset),
+      backRight: addVec(backCenter, rightOffset),
+      backLeft: addVec(backCenter, leftOffset)
+    };
   }
 
   drawAvatar(ctx, avatarState, screenX, screenY) {
