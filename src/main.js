@@ -2,11 +2,13 @@ import { GameState } from './game/GameState.js';
 import { IsoRenderer } from './game/IsoRenderer.js';
 import { InputController } from './game/InputController.js';
 import { createPaletteView } from './ui/paletteView.js';
-import { findPaletteItem, rotationLabels } from './game/palette.js';
+import { createFurnitureStudio } from './ui/furnitureStudio.js';
+import { findPaletteItem, rotationLabels, onPaletteChange } from './game/palette.js';
 import { Avatar } from './game/Avatar.js';
 
 const canvas = document.getElementById('gameCanvas');
 const paletteRoot = document.getElementById('paletteRoot');
+const furnitureStudioRoot = document.getElementById('furnitureStudioRoot');
 const rotateButton = document.getElementById('rotateButton');
 const rotationLabel = document.getElementById('rotationLabel');
 const tileIndicator = document.getElementById('tileIndicator');
@@ -18,7 +20,11 @@ const state = new GameState(14, 14);
 const avatar = new Avatar(state);
 const renderer = new IsoRenderer(canvas, state, avatar);
 const input = new InputController(canvas, state, renderer, avatar);
-createPaletteView(paletteRoot, state);
+const paletteView = createPaletteView(paletteRoot, state);
+const furnitureStudio = createFurnitureStudio(furnitureStudioRoot, state);
+const unsubscribePaletteChange = onPaletteChange(() => {
+  state.notifyChange();
+});
 
 state.onChange(() => {
   renderer.draw();
@@ -175,4 +181,7 @@ function updateZoomControls(event) {
 window.addEventListener('beforeunload', () => {
   input.destroy();
   renderer.destroy();
+  paletteView?.destroy?.();
+  furnitureStudio?.destroy?.();
+  unsubscribePaletteChange?.();
 });
