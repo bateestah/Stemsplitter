@@ -431,6 +431,13 @@ export class IsoRenderer {
 
     const seatBase = this.createLayer(centerX, baseCenterY, 1.08, 1.05);
     const seatTop = this.createLayer(centerX, baseCenterY - scaledSeatHeight, 0.95, 0.9);
+    const armOffset = this.halfTileWidth * 0.58;
+    const armHeight = seatHeight * 0.62;
+    const scaledArmHeight = armHeight * this.zoom;
+    const leftArmBase = this.createLayer(centerX - armOffset, seatBase.centerY, 0.32, 0.92);
+    const rightArmBase = this.createLayer(centerX + armOffset, seatBase.centerY, 0.32, 0.92);
+    const leftArmTop = this.createLayer(centerX - armOffset, seatBase.centerY - scaledArmHeight, 0.28, 0.88);
+    const rightArmTop = this.createLayer(centerX + armOffset, seatBase.centerY - scaledArmHeight, 0.28, 0.88);
     const backBaseCenterY = seatTop.centerY - this.halfTileHeight * 0.28;
     const backBase = this.createLayer(centerX, backBaseCenterY, 0.95, 0.65);
     const backTop = this.createLayer(centerX, backBaseCenterY - scaledBackHeight, 0.9, 0.5);
@@ -469,6 +476,25 @@ export class IsoRenderer {
       strokeColor: seatStroke
     });
 
+    const armOuterShade = this.shadeColor(color, -0.52);
+    const armInnerShade = this.shadeColor(color, -0.34);
+    const armTopHighlight = this.shadeColor(color, 0.3);
+    const armStroke = this.shadeColor(color, -0.58);
+
+    this.drawPrismFaces(ctx, leftArmBase, leftArmTop, {
+      leftColor: armOuterShade,
+      rightColor: armInnerShade,
+      topColor: armTopHighlight,
+      strokeColor: armStroke
+    });
+
+    this.drawPrismFaces(ctx, rightArmBase, rightArmTop, {
+      leftColor: armInnerShade,
+      rightColor: armOuterShade,
+      topColor: armTopHighlight,
+      strokeColor: armStroke
+    });
+
     ctx.strokeStyle = this.shadeColor(color, -0.25);
     ctx.lineWidth = 1;
     const seatSeamStart = lerpVec(seatTop.left, seatTop.top, 0.52);
@@ -484,6 +510,24 @@ export class IsoRenderer {
     ctx.beginPath();
     ctx.moveTo(seatFrontStart.x, seatFrontStart.y);
     ctx.lineTo(seatFrontEnd.x, seatFrontEnd.y);
+    ctx.stroke();
+
+    const armSeamColor = this.shadeColor(color, 0.12);
+    ctx.strokeStyle = armSeamColor;
+    ctx.lineWidth = 0.9;
+
+    const leftArmSeamTop = lerpVec(leftArmTop.right, leftArmTop.bottom, 0.4);
+    const leftArmSeamBottom = lerpVec(leftArmBase.right, leftArmBase.bottom, 0.6);
+    ctx.beginPath();
+    ctx.moveTo(leftArmSeamTop.x, leftArmSeamTop.y);
+    ctx.lineTo(leftArmSeamBottom.x, leftArmSeamBottom.y);
+    ctx.stroke();
+
+    const rightArmSeamTop = lerpVec(rightArmTop.left, rightArmTop.bottom, 0.4);
+    const rightArmSeamBottom = lerpVec(rightArmBase.left, rightArmBase.bottom, 0.6);
+    ctx.beginPath();
+    ctx.moveTo(rightArmSeamTop.x, rightArmSeamTop.y);
+    ctx.lineTo(rightArmSeamBottom.x, rightArmSeamBottom.y);
     ctx.stroke();
 
     this.drawOrientationCue(ctx, seatTop, rotation);
