@@ -252,6 +252,229 @@ h2 {
   gap: 1.25rem;
 }
 
+.studio-panel {
+  background: rgba(15, 18, 42, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  padding: 1.25rem 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.studio-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.studio-header h3 {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.studio-subtitle {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.studio-root {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.studio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+.studio-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.studio-mode-indicator {
+  align-self: flex-start;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: rgba(255, 179, 71, 0.15);
+  border-radius: 999px;
+  padding: 0.35rem 0.75rem;
+}
+
+.studio-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex: 1 1 200px;
+}
+
+.studio-field > span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.studio-input,
+.studio-select,
+.studio-textarea,
+.studio-color-hex,
+.studio-number {
+  background: rgba(12, 15, 36, 0.88);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  padding: 0.6rem 0.75rem;
+  font-family: 'Inter', sans-serif;
+  transition: border 0.2s ease, box-shadow 0.2s ease;
+}
+
+.studio-select {
+  min-width: 160px;
+}
+
+.studio-textarea {
+  resize: vertical;
+  min-height: 84px;
+}
+
+.studio-input:focus-visible,
+.studio-select:focus-visible,
+.studio-textarea:focus-visible,
+.studio-color-hex:focus-visible,
+.studio-number:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.55);
+  outline-offset: 2px;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.studio-color-group {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.studio-color-input {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0;
+  cursor: pointer;
+}
+
+.studio-color-input::-webkit-color-swatch-wrapper {
+  padding: 0;
+  border-radius: 9px;
+}
+
+.studio-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 9px;
+}
+
+.studio-color-hex {
+  width: 90px;
+  text-transform: uppercase;
+}
+
+.studio-height-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.studio-range {
+  flex: 1 1 auto;
+  accent-color: var(--accent);
+}
+
+.studio-number {
+  width: 72px;
+}
+
+.studio-height-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.studio-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.studio-primary-button,
+.studio-secondary-button {
+  border: 0;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  padding: 0.55rem 0.95rem;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.studio-primary-button {
+  background: linear-gradient(135deg, #ffe27d, #ffb347 55%, #ff8860);
+  color: #33230d;
+  box-shadow: 0 8px 18px rgba(255, 141, 0, 0.28);
+}
+
+.studio-primary-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(255, 141, 0, 0.34);
+}
+
+.studio-secondary-button {
+  background: linear-gradient(135deg, rgba(120, 240, 255, 0.3), rgba(122, 181, 255, 0.45));
+  color: var(--text-primary);
+  border: 1px solid rgba(142, 170, 255, 0.45);
+}
+
+.studio-secondary-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(118, 178, 255, 0.28);
+}
+
+.studio-primary-button:disabled,
+.studio-secondary-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.studio-status {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.studio-status[data-tone='success'] {
+  color: #8cffd1;
+}
+
+.studio-status[data-tone='error'] {
+  color: #ff7a7a;
+}
+
+.studio-status[data-tone='warning'] {
+  color: #ffd27f;
+}
+
 .palette-categories {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
