@@ -1,4 +1,4 @@
-import { palette } from '../game/palette.js';
+import { palette, onPaletteChange } from '../game/palette.js';
 
 export function createPaletteView(root, state) {
   if (!root) {
@@ -59,7 +59,7 @@ export function createPaletteView(root, state) {
   updateActiveStates();
   updateSelectionDetails();
 
-  const unsubscribe = state.onChange(() => {
+  const unsubscribeState = state.onChange(() => {
     if (state.selectedCategory !== currentCategory) {
       currentCategory = state.selectedCategory;
       renderItems(currentCategory);
@@ -69,9 +69,16 @@ export function createPaletteView(root, state) {
     updateSelectionDetails();
   });
 
+  const unsubscribePalette = onPaletteChange(() => {
+    renderItems(currentCategory);
+    updateActiveStates();
+    updateSelectionDetails();
+  });
+
   return {
     destroy() {
-      unsubscribe();
+      unsubscribeState();
+      unsubscribePalette();
     }
   };
 
