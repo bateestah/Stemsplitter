@@ -1,23 +1,7 @@
+import { resolveLayers, getAnimationFrame } from './avatarAppearance.js';
 import { findPaletteItem } from './palette.js';
 
 const TWO_PI = Math.PI * 2;
-
-function addVec(a, b) {
-  return { x: a.x + b.x, y: a.y + b.y };
-}
-
-function subVec(a, b) {
-  return { x: a.x - b.x, y: a.y - b.y };
-}
-
-function scaleVec(v, scalar) {
-  return { x: v.x * scalar, y: v.y * scalar };
-}
-
-function normalizeVec(v) {
-  const length = Math.hypot(v.x, v.y) || 1;
-  return { x: v.x / length, y: v.y / length };
-}
 
 function lerpVec(a, b, t) {
   return {
@@ -844,287 +828,41 @@ export class IsoRenderer {
       return;
     }
 
-    const { facing, walkPhase, stride, bob, sway, lean } = avatarState;
-    const forwardBase = this.directionVectors[facing % this.directionVectors.length] ?? this.directionVectors[1];
-    const forward = normalizeVec(forwardBase);
-    const right = normalizeVec({ x: forward.y, y: -forward.x });
-
+    const { facing, animation, frameProgress, appearance } = avatarState;
     const baseX = screenX;
     const baseY = screenY + this.halfTileHeight;
-
     const scale = this.zoom;
-    const px = value => value * scale;
-    const scaledBob = bob * scale;
-    const scaledSway = sway * scale;
-    const scaledLean = lean * scale;
 
     ctx.save();
 
     ctx.fillStyle = 'rgba(10, 15, 35, 0.42)';
     ctx.beginPath();
-    ctx.ellipse(baseX, baseY + px(2.5), this.halfTileWidth * 0.36, this.halfTileHeight * 0.55, 0, 0, TWO_PI);
+    ctx.ellipse(baseX, baseY + 2 * scale, this.halfTileWidth * 0.36, this.halfTileHeight * 0.55, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    const cycle = walkPhase * TWO_PI;
-    const swing = Math.sin(cycle) * stride;
-    const legSpread = px(7);
-    const stepDistance = px(10);
-    const leftSwing = swing;
-    const rightSwing = -swing;
-    const leftLift = Math.max(0, leftSwing) * px(8);
-    const rightLift = Math.max(0, rightSwing) * px(8);
-
-    const swayOffset = scaleVec(right, scaledSway);
-    const leanOffset = scaleVec(forward, scaledLean * 0.1);
-    const hip = addVec(addVec({ x: baseX, y: baseY - px(24) - scaledBob }, swayOffset), leanOffset);
-    const footBase = addVec(
-      addVec({ x: baseX, y: baseY }, scaleVec(right, scaledSway * 0.2)),
-      scaleVec(forward, scaledLean * 0.04)
-    );
-    const chest = addVec(hip, { x: 0, y: -px(18) });
-    const shoulderBase = addVec(chest, { x: 0, y: -px(6) });
-
-    const leftFoot = addVec(
-      footBase,
-      addVec(scaleVec(right, -legSpread), addVec(scaleVec(forward, leftSwing * stepDistance), { x: 0, y: -leftLift }))
-    );
-    const rightFoot = addVec(
-      footBase,
-      addVec(scaleVec(right, legSpread), addVec(scaleVec(forward, rightSwing * stepDistance), { x: 0, y: -rightLift }))
-    );
-
-    const leftKnee = addVec(
-      lerpVec(hip, leftFoot, 0.45),
-      addVec(scaleVec(forward, leftSwing * 3.6 * scale), scaleVec(right, -leftSwing * 1.6 * scale))
-    );
-    const rightKnee = addVec(
-      lerpVec(hip, rightFoot, 0.45),
-      addVec(scaleVec(forward, rightSwing * 3.6 * scale), scaleVec(right, rightSwing * 1.6 * scale))
-    );
-
-    const hipOffset = px(4);
-    const hipLeft = addVec(hip, scaleVec(right, -hipOffset));
-    const hipRight = addVec(hip, scaleVec(right, hipOffset));
-
-    const armSpread = px(9);
-    const shoulderLeft = addVec(shoulderBase, scaleVec(right, -armSpread));
-    const shoulderRight = addVec(shoulderBase, scaleVec(right, armSpread));
-    const armForward = stepDistance * 0.65;
-    const leftArmSwing = -leftSwing;
-    const rightArmSwing = -rightSwing;
-
-    const leftHand = addVec(
-      shoulderLeft,
-      addVec(
-        scaleVec(forward, leftArmSwing * armForward + scaledLean * 0.05),
-        { x: 0, y: px(16) + Math.max(0, leftArmSwing) * px(6) }
-      )
-    );
-    const rightHand = addVec(
-      shoulderRight,
-      addVec(
-        scaleVec(forward, rightArmSwing * armForward + scaledLean * 0.05),
-        { x: 0, y: px(16) + Math.max(0, rightArmSwing) * px(6) }
-      )
-    );
-
-    const leftElbow = addVec(
-      lerpVec(shoulderLeft, leftHand, 0.45),
-      addVec(scaleVec(forward, leftArmSwing * -2.4 * scale), scaleVec(right, -leftArmSwing * 1.2 * scale))
-    );
-    const rightElbow = addVec(
-      lerpVec(shoulderRight, rightHand, 0.45),
-      addVec(scaleVec(forward, rightArmSwing * -2.4 * scale), scaleVec(right, rightArmSwing * 1.2 * scale))
-    );
-
-    const headCenter = addVec(shoulderBase, { x: 0, y: -px(12) - scaledBob * 0.25 });
-
-    const limbs = {
-      left: {
-        leg: { hip: hipLeft, knee: leftKnee, foot: leftFoot },
-        arm: { shoulder: shoulderLeft, elbow: leftElbow, hand: leftHand }
-      },
-      right: {
-        leg: { hip: hipRight, knee: rightKnee, foot: rightFoot },
-        arm: { shoulder: shoulderRight, elbow: rightElbow, hand: rightHand }
+    const layers = resolveLayers(appearance);
+    for (const layer of layers) {
+      const frame = getAnimationFrame(layer, animation, facing, frameProgress);
+      if (!frame?.image) {
+        continue;
       }
-    };
 
-    const frontSide = right.y > 0 ? 'right' : 'left';
-    const backSide = frontSide === 'right' ? 'left' : 'right';
+      const drawWidth = frame.width * scale;
+      const drawHeight = frame.height * scale;
+      const offsetX = (frame.offsetX ?? 0) * scale;
+      const offsetY = (frame.offsetY ?? 0) * scale;
+      const anchorX = (frame.anchorX ?? frame.width / 2) * scale;
+      const anchorY = (frame.anchorY ?? frame.height) * scale;
 
-    const legBackColor = '#20264d';
-    const legFrontColor = '#303a7f';
-    const skinBack = '#d58f6d';
-    const skinFront = '#f6b88e';
-    const handHighlight = '#fde2d4';
-    const outfitBase = '#6772ff';
-    const outfitShadow = this.shadeColor(outfitBase, -0.32);
-    const outfitHighlight = this.shadeColor(outfitBase, 0.28);
-    const hairBase = '#3f2a75';
-    const hairHighlight = '#6f42b5';
+      const destX = baseX + offsetX - anchorX;
+      const destY = baseY + offsetY - anchorY;
 
-    const drawLeg = (segment, color) => {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = 6 * scale;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      ctx.moveTo(segment.hip.x, segment.hip.y);
-      ctx.lineTo(segment.knee.x, segment.knee.y);
-      ctx.lineTo(segment.foot.x, segment.foot.y);
-      ctx.stroke();
-
-      ctx.fillStyle = this.shadeColor(color, -0.25);
-      ctx.beginPath();
-      ctx.ellipse(segment.foot.x, segment.foot.y, 5.6 * scale, 2.8 * scale, 0, 0, TWO_PI);
-      ctx.fill();
-    };
-
-    const drawArm = (segment, color, width) => {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = width * scale;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      ctx.beginPath();
-      ctx.moveTo(segment.shoulder.x, segment.shoulder.y);
-      ctx.lineTo(segment.elbow.x, segment.elbow.y);
-      ctx.lineTo(segment.hand.x, segment.hand.y);
-      ctx.stroke();
-
-      ctx.fillStyle = handHighlight;
-      ctx.beginPath();
-      ctx.arc(segment.hand.x, segment.hand.y, 2.4 * scale, 0, TWO_PI);
-      ctx.fill();
-    };
-
-    drawLeg(limbs[backSide].leg, legBackColor);
-    drawArm(limbs[backSide].arm, skinBack, 4.2);
-
-    const waistLeft = addVec(hip, scaleVec(right, -7.6 * scale));
-    const waistRight = addVec(hip, scaleVec(right, 7.6 * scale));
-    const shoulderLeftEdge = addVec(shoulderBase, scaleVec(right, -6.6 * scale));
-    const shoulderRightEdge = addVec(shoulderBase, scaleVec(right, 6.6 * scale));
-
-    const torsoGradient = ctx.createLinearGradient(
-      shoulderLeftEdge.x,
-      shoulderLeftEdge.y,
-      shoulderRightEdge.x,
-      shoulderRightEdge.y
-    );
-    torsoGradient.addColorStop(0, outfitShadow);
-    torsoGradient.addColorStop(0.52, outfitBase);
-    torsoGradient.addColorStop(1, outfitHighlight);
-
-    ctx.fillStyle = torsoGradient;
-    ctx.beginPath();
-    ctx.moveTo(shoulderLeftEdge.x, shoulderLeftEdge.y);
-    ctx.lineTo(shoulderRightEdge.x, shoulderRightEdge.y);
-    ctx.lineTo(waistRight.x, waistRight.y);
-    ctx.lineTo(waistLeft.x, waistLeft.y);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(12, 18, 44, 0.55)';
-    ctx.lineWidth = 2 * scale;
-    ctx.beginPath();
-    ctx.moveTo(waistLeft.x, waistLeft.y);
-    ctx.lineTo(waistRight.x, waistRight.y);
-    ctx.stroke();
-
-    const collarCenter = addVec(shoulderBase, { x: 0, y: -px(3.8) });
-    const collarLeft = addVec(collarCenter, scaleVec(right, -4 * scale));
-    const collarRight = addVec(collarCenter, scaleVec(right, 4 * scale));
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-    ctx.lineWidth = 1.5 * scale;
-    ctx.beginPath();
-    ctx.moveTo(collarLeft.x, collarLeft.y);
-    ctx.lineTo(collarRight.x, collarRight.y);
-    ctx.stroke();
-
-    drawLeg(limbs[frontSide].leg, legFrontColor);
-    drawArm(limbs[frontSide].arm, skinFront, 4.8);
-
-    const headGradient = ctx.createRadialGradient(
-      headCenter.x - px(2),
-      headCenter.y - px(3),
-      1.5 * scale,
-      headCenter.x,
-      headCenter.y,
-      8.6 * scale
-    );
-    headGradient.addColorStop(0, '#ffe3c4');
-    headGradient.addColorStop(1, '#f2b18d');
-
-    ctx.fillStyle = headGradient;
-    ctx.beginPath();
-    ctx.arc(headCenter.x, headCenter.y, 8.6 * scale, 0, TWO_PI);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(34, 32, 56, 0.35)';
-    ctx.lineWidth = 1 * scale;
-    ctx.stroke();
-
-    const hairGradient = ctx.createLinearGradient(
-      headCenter.x - px(6),
-      headCenter.y - px(10),
-      headCenter.x + px(6),
-      headCenter.y
-    );
-    hairGradient.addColorStop(0, hairBase);
-    hairGradient.addColorStop(1, hairHighlight);
-
-    const hairTop = addVec(headCenter, { x: 0, y: -px(7) });
-    ctx.fillStyle = hairGradient;
-    ctx.beginPath();
-    ctx.ellipse(hairTop.x + right.x * px(1.8), hairTop.y, 9 * scale, 6.8 * scale, 0, 0, TWO_PI);
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)';
-    ctx.lineWidth = 1.1 * scale;
-    ctx.beginPath();
-    ctx.moveTo(headCenter.x + right.x * -px(3.5), headCenter.y - px(2.5));
-    ctx.lineTo(headCenter.x + right.x * px(2.8), headCenter.y - px(4.1));
-    ctx.stroke();
-
-    const eyeBase = addVec(headCenter, { x: 0, y: px(1.6) });
-    const leftEye = addVec(eyeBase, addVec(scaleVec(right, -2.4 * scale), scaleVec(forward, 0.4 * scale)));
-    const rightEye = addVec(eyeBase, addVec(scaleVec(right, 2.4 * scale), scaleVec(forward, 0.4 * scale)));
-    const eyeLineY = (leftEye.y + rightEye.y) / 2;
-    const adjustedLeftEye = { x: leftEye.x, y: eyeLineY };
-    const adjustedRightEye = { x: rightEye.x, y: eyeLineY };
-    ctx.fillStyle = '#2f2947';
-    ctx.beginPath();
-    ctx.arc(adjustedLeftEye.x, adjustedLeftEye.y, 1.15 * scale, 0, TWO_PI);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(adjustedRightEye.x, adjustedRightEye.y, 1.15 * scale, 0, TWO_PI);
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-    ctx.beginPath();
-    ctx.arc(adjustedLeftEye.x + px(0.5), adjustedLeftEye.y - px(0.4), 0.4 * scale, 0, TWO_PI);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(adjustedRightEye.x + px(0.5), adjustedRightEye.y - px(0.4), 0.4 * scale, 0, TWO_PI);
-    ctx.fill();
-
-    const nose = addVec(headCenter, addVec({ x: 0, y: px(2.2) }, scaleVec(forward, 0.8 * scale)));
-    ctx.strokeStyle = 'rgba(206, 122, 100, 0.42)';
-    ctx.lineWidth = 1 * scale;
-    ctx.beginPath();
-    ctx.moveTo(nose.x, nose.y - px(1.1));
-    ctx.lineTo(nose.x, nose.y + px(1.2));
-    ctx.stroke();
-
-    const mouth = addVec(headCenter, { x: 0, y: px(4.8) });
-    ctx.strokeStyle = '#ce7b63';
-    ctx.lineWidth = 1.2 * scale;
-    ctx.beginPath();
-    ctx.arc(mouth.x, mouth.y, 2.3 * scale, Math.PI * 0.1, Math.PI - Math.PI * 0.1);
-    ctx.stroke();
+      ctx.drawImage(frame.image, destX, destY, drawWidth, drawHeight);
+    }
 
     ctx.restore();
   }
+
 
   drawHoverFill(ctx) {
     const hovered = this.state.hoveredTile;
