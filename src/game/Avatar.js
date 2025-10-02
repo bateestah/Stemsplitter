@@ -1,4 +1,8 @@
-const TWO_PI = Math.PI * 2;
+import {
+  createDefaultAppearance,
+  clampAppearance,
+  getLayerOption
+} from './avatarAppearance.js';
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -18,9 +22,10 @@ export class Avatar {
     this.speedTilesPerSecond = 3.2;
 
     this.walkCycle = 0;
-    this.walkBlend = 0;
     this.idleTime = 0;
     this.facing = 1; // default to facing south-east
+    this.manualPose = 'idle';
+    this.appearance = createDefaultAppearance();
   }
 
   getPosition() {
@@ -93,14 +98,6 @@ export class Avatar {
     const cycleSpeed = moving ? this.speedTilesPerSecond * 0.45 : 0.55;
     this.walkCycle = (this.walkCycle + delta * cycleSpeed) % 1;
 
-    const blendRate = moving ? 6 : 4.5;
-    const targetBlend = moving ? 1 : 0;
-    this.walkBlend = clamp(
-      this.walkBlend + (targetBlend - this.walkBlend) * Math.min(1, delta * blendRate),
-      0,
-      1
-    );
-
     if (!moving) {
       this.idleTime += delta;
     } else {
@@ -109,25 +106,89 @@ export class Avatar {
   }
 
   getRenderState() {
-    const cycle = this.walkCycle;
-    const stride = this.walkBlend;
-    const idleBlend = 1 - stride;
-    const walkBob = Math.sin(cycle * TWO_PI) * 4 * stride;
-    const idleBob = Math.sin(this.idleTime * TWO_PI * 0.35) * 1.2 * idleBlend;
-    const walkSway = Math.sin(cycle * TWO_PI + Math.PI / 2) * 3.2 * stride;
-    const idleSway = Math.sin(this.idleTime * TWO_PI * 0.5) * 1.4 * idleBlend;
-    const lean = Math.sin(cycle * TWO_PI) * 9 * stride;
+    const moving = this.isMoving();
+    const animation = moving ? 'walk' : this.manualPose;
+    const progress = this.resolveAnimationProgress(animation);
+    const appearance = clampAppearance(this.appearance);
 
     return {
       position: { x: this.worldPosition.x, y: this.worldPosition.y },
       facing: this.facing,
-      walkPhase: cycle,
-      stride,
-      bob: walkBob + idleBob,
-      sway: walkSway + idleSway,
-      lean,
-      moving: this.isMoving()
+      appearance,
+      animation,
+      frameProgress: progress
     };
+  }
+
+  getAppearance() {
+    return clampAppearance(this.appearance);
+  }
+
+  setAppearance(appearance) {
+    const next = clampAppearance(appearance);
+    const changed = Object.keys(next).some(key => this.appearance[key] !== next[key]);
+    this.appearance = next;
+    return changed;
+  }
+
+  setWardrobeOption(layerId, optionId) {
+    if (typeof layerId !== 'string' || typeof optionId !== 'string') {
+      return false;
+    }
+
+    const option = getLayerOption(layerId, optionId);
+    if (!option) {
+      return false;
+    }
+
+    const current = this.appearance[layerId];
+    if (current === option.id) {
+      return false;
+    }
+
+    this.appearance = {
+      ...this.appearance,
+      [layerId]: option.id
+    };
+
+    return true;
+  }
+
+  setBodyOption(optionId) {
+    return this.setWardrobeOption('body', optionId);
+  }
+
+  setClothingOption(optionId) {
+    return this.setWardrobeOption('clothing', optionId);
+  }
+
+  setHairOption(optionId) {
+    return this.setWardrobeOption('hair', optionId);
+  }
+
+  setPose(pose) {
+    if (pose !== 'idle' && pose !== 'sit') {
+      return false;
+    }
+
+    if (this.manualPose === pose) {
+      return false;
+    }
+
+    this.manualPose = pose;
+    return true;
+  }
+
+  resolveAnimationProgress(animation) {
+    if (animation === 'walk') {
+      return this.walkCycle;
+    }
+
+    if (animation === 'idle') {
+      return normalizeProgress(this.idleTime * 0.6);
+    }
+
+    return 0;
   }
 
   buildPath(start, target) {
@@ -265,4 +326,13 @@ export class Avatar {
   key(x, y) {
     return `${x},${y}`;
   }
+}
+
+function normalizeProgress(value) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+
+  const fraction = value % 1;
+  return fraction < 0 ? fraction + 1 : fraction;
 }
