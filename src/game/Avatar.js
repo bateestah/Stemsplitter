@@ -1,4 +1,8 @@
-const TWO_PI = Math.PI * 2;
+import { defaultAppearance, isValidAppearanceOption } from './avatarAppearance.js';
+
+const SIT_ANIMATION_THRESHOLD = 6.5;
+const IDLE_ANIMATION_SPEED = 0.28;
+const SIT_ANIMATION_SPEED = 0.22;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -21,6 +25,7 @@ export class Avatar {
     this.walkBlend = 0;
     this.idleTime = 0;
     this.facing = 1; // default to facing south-east
+    this.appearance = { ...defaultAppearance };
   }
 
   getPosition() {
@@ -109,24 +114,29 @@ export class Avatar {
   }
 
   getRenderState() {
-    const cycle = this.walkCycle;
-    const stride = this.walkBlend;
-    const idleBlend = 1 - stride;
-    const walkBob = Math.sin(cycle * TWO_PI) * 4 * stride;
-    const idleBob = Math.sin(this.idleTime * TWO_PI * 0.35) * 1.2 * idleBlend;
-    const walkSway = Math.sin(cycle * TWO_PI + Math.PI / 2) * 3.2 * stride;
-    const idleSway = Math.sin(this.idleTime * TWO_PI * 0.5) * 1.4 * idleBlend;
-    const lean = Math.sin(cycle * TWO_PI) * 9 * stride;
+    const moving = this.isMoving();
+    let animation = moving ? 'walk' : 'idle';
+
+    if (!moving && this.idleTime >= SIT_ANIMATION_THRESHOLD) {
+      animation = 'sit';
+    }
+
+    let frameProgress = 0;
+    if (animation === 'walk') {
+      frameProgress = this.walkCycle;
+    } else if (animation === 'idle') {
+      frameProgress = ((this.idleTime * IDLE_ANIMATION_SPEED) % 1 + 1) % 1;
+    } else {
+      const sitCycle = Math.max(0, this.idleTime - SIT_ANIMATION_THRESHOLD);
+      frameProgress = ((sitCycle * SIT_ANIMATION_SPEED) % 1 + 1) % 1;
+    }
 
     return {
       position: { x: this.worldPosition.x, y: this.worldPosition.y },
       facing: this.facing,
-      walkPhase: cycle,
-      stride,
-      bob: walkBob + idleBob,
-      sway: walkSway + idleSway,
-      lean,
-      moving: this.isMoving()
+      animation,
+      frameProgress,
+      appearance: { ...this.appearance }
     };
   }
 
@@ -264,5 +274,34 @@ export class Avatar {
 
   key(x, y) {
     return `${x},${y}`;
+  }
+
+  getAppearance() {
+    return { ...this.appearance };
+  }
+
+  setBodyStyle(optionId) {
+    return this.setAppearanceLayer('body', optionId);
+  }
+
+  setHairStyle(optionId) {
+    return this.setAppearanceLayer('hair', optionId);
+  }
+
+  setOutfitStyle(optionId) {
+    return this.setAppearanceLayer('outfit', optionId);
+  }
+
+  setAppearanceLayer(layer, optionId) {
+    if (!isValidAppearanceOption(layer, optionId)) {
+      return false;
+    }
+
+    if (this.appearance[layer] === optionId) {
+      return false;
+    }
+
+    this.appearance = { ...this.appearance, [layer]: optionId };
+    return true;
   }
 }

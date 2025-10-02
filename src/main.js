@@ -4,6 +4,7 @@ import { InputController } from './game/InputController.js';
 import { createPaletteView } from './ui/paletteView.js';
 import { findPaletteItem, rotationLabels } from './game/palette.js';
 import { Avatar } from './game/Avatar.js';
+import { createAvatarWardrobe } from './ui/avatarWardrobe.js';
 
 const canvas = document.getElementById('gameCanvas');
 const paletteRoot = document.getElementById('paletteRoot');
@@ -13,12 +14,14 @@ const tileIndicator = document.getElementById('tileIndicator');
 const modeToggleButton = document.getElementById('modeToggle');
 const zoomInButton = document.getElementById('zoomInButton');
 const zoomOutButton = document.getElementById('zoomOutButton');
+const wardrobeRoot = document.getElementById('wardrobeRoot');
 
 const state = new GameState(14, 14);
 const avatar = new Avatar(state);
 const renderer = new IsoRenderer(canvas, state, avatar);
 const input = new InputController(canvas, state, renderer, avatar);
 createPaletteView(paletteRoot, state);
+createAvatarWardrobe(wardrobeRoot, avatar, renderer);
 
 state.onChange(() => {
   renderer.draw();
