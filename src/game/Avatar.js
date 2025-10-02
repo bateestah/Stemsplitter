@@ -1,4 +1,4 @@
-const TWO_PI = Math.PI * 2;
+import { getDefaultAppearance, getLayerDefinition } from './avatarAppearance.js';
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -21,6 +21,7 @@ export class Avatar {
     this.walkBlend = 0;
     this.idleTime = 0;
     this.facing = 1; // default to facing south-east
+    this.appearance = getDefaultAppearance();
   }
 
   getPosition() {
@@ -109,24 +110,28 @@ export class Avatar {
   }
 
   getRenderState() {
-    const cycle = this.walkCycle;
-    const stride = this.walkBlend;
-    const idleBlend = 1 - stride;
-    const walkBob = Math.sin(cycle * TWO_PI) * 4 * stride;
-    const idleBob = Math.sin(this.idleTime * TWO_PI * 0.35) * 1.2 * idleBlend;
-    const walkSway = Math.sin(cycle * TWO_PI + Math.PI / 2) * 3.2 * stride;
-    const idleSway = Math.sin(this.idleTime * TWO_PI * 0.5) * 1.4 * idleBlend;
-    const lean = Math.sin(cycle * TWO_PI) * 9 * stride;
+    const moving = this.isMoving();
+    let animation = 'idle';
+    if (moving) {
+      animation = 'walk';
+    } else if (this.idleTime > 6) {
+      animation = 'sit';
+    }
+
+    let frameProgress = 0;
+    if (animation === 'walk') {
+      frameProgress = this.walkCycle;
+    } else if (animation === 'idle') {
+      frameProgress = (this.idleTime * 0.45) % 1;
+    }
 
     return {
       position: { x: this.worldPosition.x, y: this.worldPosition.y },
       facing: this.facing,
-      walkPhase: cycle,
-      stride,
-      bob: walkBob + idleBob,
-      sway: walkSway + idleSway,
-      lean,
-      moving: this.isMoving()
+      animation,
+      frameProgress,
+      moving,
+      appearance: { ...this.appearance }
     };
   }
 
@@ -264,5 +269,33 @@ export class Avatar {
 
   key(x, y) {
     return `${x},${y}`;
+  }
+
+  setAppearanceLayer(category, id) {
+    const layer = getLayerDefinition(category, id);
+    if (!layer) {
+      return false;
+    }
+    if (this.appearance[category] === id) {
+      return false;
+    }
+    this.appearance = { ...this.appearance, [category]: id };
+    return true;
+  }
+
+  setBody(id) {
+    return this.setAppearanceLayer('body', id);
+  }
+
+  setHair(id) {
+    return this.setAppearanceLayer('hair', id);
+  }
+
+  setClothing(id) {
+    return this.setAppearanceLayer('clothing', id);
+  }
+
+  getAppearance() {
+    return { ...this.appearance };
   }
 }

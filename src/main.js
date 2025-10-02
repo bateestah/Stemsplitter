@@ -2,12 +2,14 @@ import { GameState } from './game/GameState.js';
 import { IsoRenderer } from './game/IsoRenderer.js';
 import { InputController } from './game/InputController.js';
 import { createPaletteView } from './ui/paletteView.js';
+import { createAvatarWardrobe } from './ui/avatarWardrobe.js';
 import { findPaletteItem, rotationLabels } from './game/palette.js';
 import { Avatar } from './game/Avatar.js';
 
 const canvas = document.getElementById('gameCanvas');
 const paletteRoot = document.getElementById('paletteRoot');
 const rotateButton = document.getElementById('rotateButton');
+const wardrobeRoot = document.getElementById('wardrobeControls');
 const rotationLabel = document.getElementById('rotationLabel');
 const tileIndicator = document.getElementById('tileIndicator');
 const modeToggleButton = document.getElementById('modeToggle');
@@ -19,6 +21,7 @@ const avatar = new Avatar(state);
 const renderer = new IsoRenderer(canvas, state, avatar);
 const input = new InputController(canvas, state, renderer, avatar);
 createPaletteView(paletteRoot, state);
+createAvatarWardrobe(wardrobeRoot, avatar, renderer);
 
 state.onChange(() => {
   renderer.draw();
